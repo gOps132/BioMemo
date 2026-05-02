@@ -1,0 +1,6 @@
+# Copy these into local.properties for local development.
+# Never commit real API keys or secrets.
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+GOOGLE_WEB_CLIENT_ID=
+AI_IDENTIFICATION_API_KEY=
