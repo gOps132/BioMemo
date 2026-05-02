@@ -1,0 +1,22 @@
+/build
+# AI assistant / agent tooling
+.agent/
+.superpowers/
+.codex/
+.claude/
+.gemini/
+.cursor/
+.windsurf/
+.aider*
+.roo/
+.crush/
+.qodo/
+.mcp/
+mcp.json
+.mcp.json
+CLAUDE.md
+GEMINI.md
+.cursorignore
+.claudeignore
+.codexignore
+docs/superpowers/
