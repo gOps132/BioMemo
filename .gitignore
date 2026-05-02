@@ -38,3 +38,7 @@ docs/superpowers/
 .agents/cache/
 .agents/tmp/
 .agents/logs/
+
+# Machine-local IDE and agent skill bundles
+/.idea/
+.agents/skills/
