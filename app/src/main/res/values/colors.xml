@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="bio_ink">#10251A</color>
+    <color name="bio_ink_muted">#5F7467</color>
+    <color name="bio_forest_950">#07180F</color>
+    <color name="bio_forest_900">#0D2B1E</color>
+    <color name="bio_forest_800">#123724</color>
+    <color name="bio_forest_700">#1B4332</color>
+    <color name="bio_forest_600">#2D6A4F</color>
+    <color name="bio_leaf_500">#40916C</color>
+    <color name="bio_leaf_300">#95D5B2</color>
+    <color name="bio_mint_200">#D8F3DC</color>
+    <color name="bio_mint_100">#EDF8EE</color>
+    <color name="bio_surface">#F4FAF1</color>
+    <color name="bio_surface_warm">#FFFDF6</color>
+    <color name="bio_line">#CFE3D3</color>
+    <color name="bio_sun">#F2C94C</color>
+    <color name="bio_clay">#C7773A</color>
+    <color name="bio_danger">#B94040</color>
+</resources>

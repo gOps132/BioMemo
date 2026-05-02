@@ -1,0 +1,14 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.BioMemo" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/bio_forest_900</item>
+        <item name="android:navigationBarColor">@color/bio_forest_900</item>
+        <item name="colorPrimary">@color/bio_forest_700</item>
+        <item name="colorPrimaryVariant">@color/bio_forest_900</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorAccent">@color/bio_leaf_500</item>
+    </style>
+
+    <style name="Theme.BioMemo" parent="Base.Theme.BioMemo" />
+</resources>

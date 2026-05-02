@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_surface"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_hero_gradient"
+            android:orientation="vertical"
+            android:paddingLeft="24dp"
+            android:paddingTop="44dp"
+            android:paddingRight="24dp"
+            android:paddingBottom="28dp">
+
+            <TextView
+                android:id="@+id/textviewBioBack"
+                android:layout_width="wrap_content"
+                android:layout_height="42dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:text="← Dashboard"
+                android:textColor="#BFEBCB"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="My Bio Collection"
+                android:textColor="@color/white"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Seven remembered sightings with notes, tags, and confidence scores."
+                android:textColor="#BFEBCB"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/linearlayoutBioEntries"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp" />
+    </LinearLayout>
+</ScrollView>
