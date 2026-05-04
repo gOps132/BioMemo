@@ -10,6 +10,7 @@ import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.bio.BioCollectionActivity
 import com.example.biomemo.screens.capture.CaptureActivity
 import com.example.biomemo.screens.login.LoginActivity
+import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.screens.profile.ProfileActivity
 import com.example.biomemo.screens.search.SearchActivity
 
@@ -38,6 +39,10 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
 
         findViewById<LinearLayout>(R.id.linearlayoutSearchCard).setOnClickListener {
             startActivity(Intent(this, SearchActivity::class.java))
+        }
+
+        findViewById<LinearLayout>(R.id.linearlayoutBioMapCard).setOnClickListener {
+            startActivity(Intent(this, BioMapActivity::class.java))
         }
 
         val openCapture = {

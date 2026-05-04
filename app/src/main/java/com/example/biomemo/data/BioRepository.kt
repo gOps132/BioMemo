@@ -36,6 +36,8 @@ class BioRepository {
                 category = "Mammal",
                 date = "Mar 5, 2026",
                 location = "Cascade Trail, Oregon",
+                latitude = 44.0582,
+                longitude = -121.3153,
                 confidence = 98,
                 notes = "Spotted foraging near the forest edge at dusk with a white-tipped tail.",
                 tags = listOf("Carnivore", "Nocturnal", "Common")
@@ -47,6 +49,8 @@ class BioRepository {
                 category = "Insect",
                 date = "Mar 3, 2026",
                 location = "Sunflower Meadow, California",
+                latitude = 38.5781,
+                longitude = -121.4944,
                 confidence = 95,
                 notes = "Resting on milkweed mid-migration with bright orange and black wing pattern.",
                 tags = listOf("Migratory", "Pollinator", "Threatened")
@@ -58,6 +62,8 @@ class BioRepository {
                 category = "Mammal",
                 date = "Feb 28, 2026",
                 location = "Pine Ridge, Washington",
+                latitude = 47.7511,
+                longitude = -120.7401,
                 confidence = 97,
                 notes = "Caching pine cones near a Douglas fir stand and chattering from above.",
                 tags = listOf("Diurnal", "Arboreal", "Common")
@@ -69,6 +75,8 @@ class BioRepository {
                 category = "Amphibian",
                 date = "Feb 20, 2026",
                 location = "Elk Creek, Oregon",
+                latitude = 43.2165,
+                longitude = -123.3417,
                 confidence = 92,
                 notes = "Clinging to a sword fern near water after rain, calling loudly at dusk.",
                 tags = listOf("Nocturnal", "Indicator Species", "Common")
@@ -80,6 +88,8 @@ class BioRepository {
                 category = "Bird",
                 date = "Feb 15, 2026",
                 location = "Old Mill Road, Idaho",
+                latitude = 43.615,
+                longitude = -116.2023,
                 confidence = 99,
                 notes = "Perched on a fence post at twilight with a heart-shaped facial disk.",
                 tags = listOf("Nocturnal", "Raptor", "Near Threatened")
@@ -91,6 +101,8 @@ class BioRepository {
                 category = "Mammal",
                 date = "Feb 10, 2026",
                 location = "Maple Grove, Montana",
+                latitude = 46.8797,
+                longitude = -110.3626,
                 confidence = 96,
                 notes = "Doe with two yearlings grazing at sunrise along the meadow edge.",
                 tags = listOf("Herbivore", "Crepuscular", "Abundant")
@@ -102,6 +114,8 @@ class BioRepository {
                 category = "Mammal",
                 date = "Feb 2, 2026",
                 location = "Ridgeline Loop, Washington",
+                latitude = 48.7519,
+                longitude = -121.812,
                 confidence = 99,
                 notes = "Observed at a safe distance near a berry thicket in early morning.",
                 tags = listOf("Omnivore", "Solitary", "Least Concern")

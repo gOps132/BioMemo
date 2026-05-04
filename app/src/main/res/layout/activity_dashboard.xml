@@ -35,9 +35,15 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Good morning,"
-                        android:textColor="#BFEBCB"
-                        android:textSize="14sp" />
+                        android:background="@drawable/bg_hero_pill"
+                        android:paddingLeft="12dp"
+                        android:paddingTop="5dp"
+                        android:paddingRight="12dp"
+                        android:paddingBottom="5dp"
+                        android:text="BIORECORD FIELD JOURNAL"
+                        android:textColor="#D8F3DC"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/textviewDashboardWelcome"
@@ -58,8 +64,10 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center"
-                    android:text="📷"
-                    android:textSize="22sp" />
+                    android:text="+"
+                    android:textColor="@color/white"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <LinearLayout
@@ -89,7 +97,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Sightings"
+                        android:text="BioRecords"
                         android:textColor="#CFEAD6"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -177,7 +185,7 @@
                     android:paddingTop="5dp"
                     android:paddingRight="12dp"
                     android:paddingBottom="5dp"
-                    android:text="Next sighting"
+                    android:text="NEXT BIORECORD"
                     android:textColor="@color/bio_forest_900"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -186,7 +194,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Capture a memory now. Identify it later."
+                    android:text="Capture or upload an organism photo."
                     android:textColor="@color/white"
                     android:textSize="22sp"
                     android:textStyle="bold" />
@@ -195,7 +203,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Camera and AI analysis are staged behind the API-key scaffold."
+                    android:text="Analyze flora, fauna, or fungi, then save the enriched record to your library."
                     android:textColor="#C8E8D0"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -204,7 +212,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Explore"
+                android:text="Explore BioMemo"
                 android:textColor="@color/bio_ink"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -223,7 +231,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🦊  My Bio Collection"
+                    android:text="My BioRecords"
                     android:textColor="@color/bio_ink"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -232,7 +240,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
-                    android:text="Browse all local sample sightings with notes and confidence."
+                    android:text="Review saved organisms, analysis confidence, notes, and locations."
                     android:textColor="@color/bio_ink_muted"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -251,7 +259,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🔎  Search sightings"
+                    android:text="Search BioRecords"
                     android:textColor="@color/bio_ink"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -260,7 +268,35 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
-                    android:text="Search by species, tag, location, or field note."
+                    android:text="Find records by species, tag, habitat cue, location, or field note."
+                    android:textColor="@color/bio_ink_muted"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linearlayoutBioMapCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_card_elevated"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="My Bio Map"
+                    android:textColor="@color/bio_ink"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="See recorded BioRecords as simple map pins with fallback locations."
                     android:textColor="@color/bio_ink_muted"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -280,7 +316,7 @@
                     android:id="@+id/textviewProfile"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="👤  Open profile"
+                    android:text="Explorer Profile"
                     android:textColor="@color/bio_ink"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -289,7 +325,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
-                    android:text="View account and explorer details."
+                    android:text="View account details and field-journal identity."
                     android:textColor="@color/bio_ink_muted"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -308,7 +344,7 @@
                     android:id="@+id/textviewLogout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="↩  Logout"
+                    android:text="Logout"
                     android:textColor="@color/bio_forest_700"
                     android:textSize="18sp"
                     android:textStyle="bold" />

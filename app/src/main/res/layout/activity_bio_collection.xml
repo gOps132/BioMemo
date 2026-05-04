@@ -36,7 +36,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:text="My Bio Collection"
+                android:text="My BioRecords"
                 android:textColor="@color/white"
                 android:textSize="30sp"
                 android:textStyle="bold" />
@@ -45,7 +45,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Seven remembered sightings with notes, tags, and confidence scores."
+                android:text="Saved organism records with analysis confidence, notes, and field context."
                 android:textColor="#BFEBCB"
                 android:textSize="14sp" />
         </LinearLayout>
