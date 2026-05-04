@@ -6,6 +6,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.navigation.MainBottomNav
+import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
 
@@ -16,7 +18,8 @@ class BioCollectionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bio_collection)
 
-        findViewById<TextView>(R.id.textviewBioBack).setOnClickListener { finish() }
+        MainBottomNav.setup(this, MainNavDestination.RECORDS, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
+
         renderEntries(repository.getAllEntries())
     }
 

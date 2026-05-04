@@ -7,6 +7,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.biomemo.R
+import com.example.biomemo.navigation.MainBottomNav
+import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
 import org.osmdroid.config.Configuration
@@ -24,6 +26,8 @@ class BioMapActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Configuration.getInstance().userAgentValue = packageName
         setContentView(R.layout.activity_bio_map)
+
+        MainBottomNav.setup(this, MainNavDestination.RECORDS, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
 
         val entries = repository.getAllEntries().filter { it.latitude != null && it.longitude != null }
         mapView = findViewById(R.id.mapviewBioMap)

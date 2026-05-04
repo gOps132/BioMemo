@@ -10,7 +10,7 @@ class ProfilePresenter(
         view.displayUsername(formattedData)
     }
 
-    override fun onBackClicked() {
-        view.closeProfile()
+    override fun onLogoutClicked() {
+        view.logout()
     }
 }

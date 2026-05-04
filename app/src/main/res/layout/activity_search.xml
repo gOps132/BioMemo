@@ -1,74 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app_surface"
-    android:fillViewport="true">
+    android:background="@drawable/bg_app_surface">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
-
-        <TextView
-            android:id="@+id/textviewSearchBack"
-            android:layout_width="wrap_content"
-            android:layout_height="42dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:text="← Dashboard"
-            android:textColor="@color/bio_forest_600"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Search BioRecords"
-            android:textColor="@color/bio_ink"
-            android:textSize="30sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="18dp"
-            android:text="Find a BioRecord by species, tag, habitat cue, location, or field note."
-            android:textColor="@color/bio_ink_muted"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/edittextSearch"
-            android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:background="@drawable/bg_input_field"
-            android:hint="Try “pollinator”, “Oregon”, or “mammal”"
-            android:inputType="text"
-            android:paddingLeft="18dp"
-            android:paddingRight="18dp"
-            android:textColor="@color/bio_ink"
-            android:textColorHint="#839487"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/textviewSearchCount"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:layout_marginBottom="10dp"
-            android:text="0 results"
-            android:textColor="@color/bio_ink_muted"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="112dp">
 
         <LinearLayout
-            android:id="@+id/linearlayoutSearchResults"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </LinearLayout>
-</ScrollView>
+            android:orientation="vertical"
+            android:paddingLeft="20dp"
+            android:paddingTop="44dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip"
+                android:paddingLeft="12dp"
+                android:paddingTop="5dp"
+                android:paddingRight="12dp"
+                android:paddingBottom="5dp"
+                android:text="FIELD FINDER"
+                android:textColor="@color/bio_forest_700"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Search BioRecords"
+                android:textColor="@color/bio_ink"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="18dp"
+                android:text="Find a BioRecord by species, tag, habitat cue, location, or field note."
+                android:textColor="@color/bio_ink_muted"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/edittextSearch"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:background="@drawable/bg_input_field"
+                android:hint="Try “pollinator”, “Oregon”, or “mammal”"
+                android:inputType="text"
+                android:paddingLeft="18dp"
+                android:paddingRight="18dp"
+                android:textColor="@color/bio_ink"
+                android:textColorHint="#839487"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/textviewSearchCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="10dp"
+                android:text="0 results"
+                android:textColor="@color/bio_ink_muted"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/linearlayoutSearchResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
+
+    <include layout="@layout/include_main_bottom_nav" />
+</FrameLayout>
