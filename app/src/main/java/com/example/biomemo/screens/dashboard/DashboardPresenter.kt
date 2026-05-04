@@ -4,12 +4,4 @@ class DashboardPresenter(private val view: DashboardContract.View) : DashboardCo
     override fun start(username: String) {
         view.displayWelcome(username)
     }
-
-    override fun onProfileClicked(username: String) {
-        view.navigateToProfile(username)
-    }
-
-    override fun onLogoutClicked() {
-        view.logout()
-    }
 }

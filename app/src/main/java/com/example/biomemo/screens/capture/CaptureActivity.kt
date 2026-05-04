@@ -5,6 +5,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.navigation.MainBottomNav
+import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.config.AppConfig
 
 class CaptureActivity : AppCompatActivity() {
@@ -12,7 +14,8 @@ class CaptureActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_capture)
 
-        findViewById<TextView>(R.id.textviewCaptureBack).setOnClickListener { finish() }
+        MainBottomNav.setup(this, MainNavDestination.CAPTURE, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
+
         findViewById<TextView>(R.id.textviewTakePhotoAction).setOnClickListener {
             Toast.makeText(this, "Camera capture will create a BioRecord draft next.", Toast.LENGTH_SHORT).show()
         }

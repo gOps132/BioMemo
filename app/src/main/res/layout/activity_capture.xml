@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app_surface"
-    android:fillViewport="true">
+    android:background="@drawable/bg_app_surface">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="112dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,21 +27,8 @@
             android:paddingBottom="30dp">
 
             <TextView
-                android:id="@+id/textviewCaptureBack"
-                android:layout_width="wrap_content"
-                android:layout_height="42dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:text="← Dashboard"
-                android:textColor="#BFEBCB"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
                 android:background="@drawable/bg_hero_pill"
                 android:paddingLeft="12dp"
                 android:paddingTop="5dp"
@@ -183,3 +176,6 @@
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
+
+    <include layout="@layout/include_main_bottom_nav" />
+</FrameLayout>

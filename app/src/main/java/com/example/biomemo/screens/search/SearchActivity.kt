@@ -9,6 +9,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.navigation.MainBottomNav
+import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
 
@@ -19,7 +21,8 @@ class SearchActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)
 
-        findViewById<TextView>(R.id.textviewSearchBack).setOnClickListener { finish() }
+        MainBottomNav.setup(this, MainNavDestination.SEARCH, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
+
         val searchField = findViewById<EditText>(R.id.edittextSearch)
         searchField.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit

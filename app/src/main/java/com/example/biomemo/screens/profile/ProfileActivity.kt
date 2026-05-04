@@ -1,9 +1,13 @@
 package com.example.biomemo.screens.profile
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.navigation.MainBottomNav
+import com.example.biomemo.navigation.MainNavDestination
+import com.example.biomemo.screens.login.LoginActivity
 
 class ProfileActivity : AppCompatActivity(), ProfileContract.View {
 
@@ -13,18 +17,14 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
 
-        // Initialize MVP
         presenter = ProfilePresenter(this, ProfileModel())
 
-        val textviewUsername = findViewById<TextView>(R.id.textviewUsername)
-        val textviewBackToDashboard = findViewById<TextView>(R.id.textviewBackToDashboard)
-
-        // Get data from Intent and pass to Presenter
-        val username = intent.getStringExtra("username")
+        val username = intent.getStringExtra(MainBottomNav.EXTRA_USERNAME)
         presenter.start(username)
+        MainBottomNav.setup(this, MainNavDestination.PROFILE, username)
 
-        textviewBackToDashboard.setOnClickListener {
-            presenter.onBackClicked()
+        findViewById<TextView>(R.id.textviewProfileLogout).setOnClickListener {
+            presenter.onLogoutClicked()
         }
     }
 
@@ -32,7 +32,8 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
         findViewById<TextView>(R.id.textviewUsername).text = formattedName
     }
 
-    override fun closeProfile() {
+    override fun logout() {
+        startActivity(Intent(this, LoginActivity::class.java))
         finish()
     }
 }

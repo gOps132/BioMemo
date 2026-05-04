@@ -76,7 +76,7 @@
         android:layout_gravity="bottom"
         android:layout_marginLeft="18dp"
         android:layout_marginRight="18dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="132dp"
         android:background="@drawable/bg_card_elevated"
         android:orientation="vertical"
         android:padding="18dp"
@@ -108,4 +108,5 @@
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
+    <include layout="@layout/include_main_bottom_nav" />
 </FrameLayout>
