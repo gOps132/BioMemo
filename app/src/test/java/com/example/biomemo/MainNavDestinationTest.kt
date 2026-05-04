@@ -26,7 +26,7 @@ class MainNavDestinationTest {
     }
 
     @Test
-    fun bottomNavDestinationsExposeStableIconAndLabelIds() {
+    fun bottomNavDestinationsExposeOnlyStableIconIdsForIconOnlyNavigation() {
         val destinations = MainNavDestination.entries
 
         assertEquals(
@@ -39,16 +39,5 @@ class MainNavDestinationTest {
             ),
             destinations.map { it.iconId }
         )
-        assertEquals(
-            listOf(
-                R.id.navHomeLabel,
-                R.id.navRecordsLabel,
-                R.id.navCaptureLabel,
-                R.id.navSearchLabel,
-                R.id.navProfileLabel
-            ),
-            destinations.map { it.labelId }
-        )
     }
-
 }
