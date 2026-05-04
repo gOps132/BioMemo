@@ -80,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="24dp"
-                android:text="Log sightings, build your field journal, and keep every encounter close."
+                android:text="Create BioRecords, map discoveries, and keep every encounter close."
                 android:textColor="@color/bio_ink_muted"
                 android:textSize="14sp" />
 

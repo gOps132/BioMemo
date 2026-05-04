@@ -38,7 +38,7 @@ class SearchActivity : AppCompatActivity() {
         container.removeAllViews()
 
         if (entries.isEmpty()) {
-            container.addView(text("No sightings found. Try a species, tag, or location.", 15, R.color.bio_ink_muted, false))
+            container.addView(text("No BioRecords found. Try a species, tag, or location.", 15, R.color.bio_ink_muted, false))
             return
         }
 

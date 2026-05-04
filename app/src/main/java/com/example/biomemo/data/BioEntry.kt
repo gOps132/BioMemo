@@ -7,6 +7,8 @@ data class BioEntry(
     val category: String,
     val date: String,
     val location: String,
+    val latitude: Double?,
+    val longitude: Double?,
     val confidence: Int,
     val notes: String,
     val tags: List<String>
