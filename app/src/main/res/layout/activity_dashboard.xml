@@ -135,37 +135,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:text="Field overview"
+                    android:text="Recent BioRecords"
                     android:textColor="@color/bio_ink"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
                 <LinearLayout
-                    android:id="@+id/linearlayoutBioMapCard"
+                    android:id="@+id/linearlayoutRecentBioRecords"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_card_elevated"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="My Bio Map"
-                        android:textColor="@color/bio_ink"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:text="See recorded BioRecords as simple map pins with fallback locations."
-                        android:textColor="@color/bio_ink_muted"
-                        android:textSize="13sp" />
-                </LinearLayout>
+                    android:orientation="vertical" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
