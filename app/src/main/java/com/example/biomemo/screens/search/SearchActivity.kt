@@ -1,10 +1,12 @@
 package com.example.biomemo.screens.search
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -13,6 +15,7 @@ import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.screens.bio.BioRecordDetailActivity
 
 class SearchActivity : AppCompatActivity() {
     private val repository = BioRepository()
@@ -47,18 +50,47 @@ class SearchActivity : AppCompatActivity() {
 
         entries.forEach { entry ->
             val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+                orientation = LinearLayout.HORIZONTAL
                 setBackgroundResource(R.drawable.bg_card_elevated)
+                isClickable = true
+                isFocusable = true
                 setPadding(dp(16), dp(14), dp(16), dp(14))
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply { bottomMargin = dp(10) }
+                setOnClickListener { openBioRecord(entry) }
             }
-            card.addView(text(entry.commonName, 17, R.color.bio_ink, true))
-            card.addView(text("${entry.scientificName} · ${entry.category}", 13, R.color.bio_ink_muted, false))
-            card.addView(text(entry.tags.joinToString(" · "), 13, R.color.bio_forest_600, true))
+            card.addView(thumbnail(entry))
+            card.addView(LinearLayout(this@SearchActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+                addView(text(entry.commonName, 17, R.color.bio_ink, true))
+                addView(text("${entry.scientificName} · ${entry.category}", 13, R.color.bio_ink_muted, false))
+                addView(text(entry.tags.joinToString(" · "), 13, R.color.bio_forest_600, true))
+            })
             container.addView(card)
+        }
+    }
+
+    private fun openBioRecord(entry: BioEntry) {
+        startActivity(
+            Intent(this, BioRecordDetailActivity::class.java)
+                .putExtra(BioRecordDetailActivity.EXTRA_ENTRY_ID, entry.id)
+        )
+    }
+
+    private fun thumbnail(entry: BioEntry): ImageView = ImageView(this).apply {
+        contentDescription = "${entry.commonName} thumbnail"
+        setBackgroundResource(R.drawable.bg_bio_thumbnail)
+        setImageResource(R.drawable.ic_bio_record_photo)
+        setPadding(dp(13), dp(13), dp(13), dp(13))
+        layoutParams = LinearLayout.LayoutParams(dp(68), dp(68)).apply {
+            rightMargin = dp(12)
         }
     }
 
