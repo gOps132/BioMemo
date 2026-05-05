@@ -1,14 +1,8 @@
 package com.example.biomemo.screens.profile
 
 class ProfilePresenter(
-    private val view: ProfileContract.View,
-    private val model: ProfileModel
+    private val view: ProfileContract.View
 ) : ProfileContract.Presenter {
-
-    override fun start(username: String?) {
-        val formattedData = model.getFormattedUsername(username)
-        view.displayUsername(formattedData)
-    }
 
     override fun onLogoutClicked() {
         view.logout()

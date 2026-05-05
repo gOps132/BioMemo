@@ -90,7 +90,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 android:letterSpacing="0.08"
-                android:text="USERNAME"
+                android:text="USERNAME OR EMAIL"
                 android:textColor="@color/bio_ink_muted"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -151,7 +151,7 @@
                 android:layout_marginBottom="24dp"
                 android:background="@drawable/bg_button_primary"
                 android:backgroundTint="@null"
-                android:text="Enter the field journal"
+                android:text="Continue with email"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="17sp"

@@ -35,14 +35,6 @@
                     android:textSize="29sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Your field journal is ready for the next organism memory."
-                    android:textColor="#BFEBCB"
-                    android:textSize="14sp" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -138,34 +130,6 @@
                 android:paddingTop="22dp"
                 android:paddingRight="20dp"
                 android:paddingBottom="32dp">
-
-                <LinearLayout
-                    android:id="@+id/linearlayoutCaptureCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="18dp"
-                    android:background="@drawable/bg_card_dark"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Capture or upload an organism photo."
-                        android:textColor="@color/white"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Use the center + Capture button any time you spot flora, fauna, or fungi in the field."
-                        android:textColor="#C8E8D0"
-                        android:textSize="14sp" />
-                </LinearLayout>
 
                 <TextView
                     android:layout_width="match_parent"
