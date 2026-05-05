@@ -27,23 +27,9 @@
                 android:paddingBottom="28dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_hero_pill"
-                    android:paddingLeft="12dp"
-                    android:paddingTop="5dp"
-                    android:paddingRight="12dp"
-                    android:paddingBottom="5dp"
-                    android:text="BIORECORD FIELD JOURNAL"
-                    android:textColor="#D8F3DC"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
-                <TextView
                     android:id="@+id/textviewDashboardWelcome"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
                     android:text="Welcome"
                     android:textColor="@color/white"
                     android:textSize="29sp"
@@ -165,22 +151,8 @@
                     android:padding="20dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_chip_sun"
-                        android:paddingLeft="12dp"
-                        android:paddingTop="5dp"
-                        android:paddingRight="12dp"
-                        android:paddingBottom="5dp"
-                        android:text="NEXT BIORECORD"
-                        android:textColor="@color/bio_forest_900"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
                         android:text="Capture or upload an organism photo."
                         android:textColor="@color/white"
                         android:textSize="22sp"
