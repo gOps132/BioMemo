@@ -21,22 +21,8 @@
             android:paddingBottom="32dp">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_chip"
-                android:paddingLeft="12dp"
-                android:paddingTop="5dp"
-                android:paddingRight="12dp"
-                android:paddingBottom="5dp"
-                android:text="FIELD FINDER"
-                android:textColor="@color/bio_forest_700"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
                 android:text="Search BioRecords"
                 android:textColor="@color/bio_ink"
                 android:textSize="30sp"
