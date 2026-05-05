@@ -17,19 +17,14 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
 
-        presenter = ProfilePresenter(this, ProfileModel())
+        presenter = ProfilePresenter(this)
 
         val username = intent.getStringExtra(MainBottomNav.EXTRA_USERNAME)
-        presenter.start(username)
         MainBottomNav.setup(this, MainNavDestination.PROFILE, username)
 
         findViewById<TextView>(R.id.textviewProfileLogout).setOnClickListener {
             presenter.onLogoutClicked()
         }
-    }
-
-    override fun displayUsername(formattedName: String) {
-        findViewById<TextView>(R.id.textviewUsername).text = formattedName
     }
 
     override fun logout() {

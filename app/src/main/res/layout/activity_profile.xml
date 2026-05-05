@@ -50,15 +50,6 @@
                 android:textColor="@color/white"
                 android:textSize="30sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:text="Your identity in the field journal"
-                android:textColor="#BFEBCB"
-                android:textSize="14sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -69,32 +60,6 @@
             android:paddingTop="22dp"
             android:paddingRight="20dp"
             android:paddingBottom="28dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="18dp"
-                android:background="@drawable/bg_card_dark"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:id="@+id/textviewUsername"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Username: dummy_username"
-                    android:textColor="@color/white"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Keep your notes consistent so every discovery is easier to recall later."
-                    android:textColor="#C8E8D0"
-                    android:textSize="14sp" />
-            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"

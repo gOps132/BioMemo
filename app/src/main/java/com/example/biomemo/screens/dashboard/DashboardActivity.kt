@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.map.BioMapActivity
-import com.example.biomemo.navigation.CaptureActionSheet
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 
@@ -36,9 +35,6 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             startActivity(Intent(this, BioMapActivity::class.java).putExtra(MainBottomNav.EXTRA_USERNAME, currentUsername))
         }
 
-        findViewById<LinearLayout>(R.id.linearlayoutCaptureCard).setOnClickListener {
-            CaptureActionSheet.show(this)
-        }
     }
 
     override fun displayWelcome(username: String) {
