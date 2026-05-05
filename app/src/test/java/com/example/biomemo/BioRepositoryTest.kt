@@ -24,4 +24,16 @@ class BioRepositoryTest {
         assertEquals(7, stats.species)
         assertEquals("5d", stats.streak)
     }
+
+    @Test
+    fun entryLookupReturnsBioRecordDetailFields() {
+        val entry = BioRepository().getEntryById("red-fox")
+
+        assertEquals("Red Fox", entry?.commonName)
+        assertEquals("Sample Library", entry?.sourceType)
+        assertEquals("Verified", entry?.verificationStatus)
+        assertEquals("GPS coordinates available", entry?.metadataAvailability)
+        assertEquals("Animalia > Chordata > Mammalia > Carnivora > Canidae", entry?.taxonomy)
+        assertEquals("Least Concern", entry?.conservationStatus)
+    }
 }
