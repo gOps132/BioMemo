@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/bio_surface_warm" />
+    <foreground android:drawable="@drawable/biomemo_transparent_border" />
+    <monochrome android:drawable="@drawable/biomemo_transparent_border" />
+</adaptive-icon>
