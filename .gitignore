@@ -10,6 +10,7 @@
 .DS_Store
 /build
 /captures
+supabase/.temp/
 .externalNativeBuild
 .cxx
 local.properties
