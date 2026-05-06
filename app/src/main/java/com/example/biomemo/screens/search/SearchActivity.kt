@@ -16,9 +16,15 @@ import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
     private val repository = BioRepository()
+    private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,11 +36,15 @@ class SearchActivity : AppCompatActivity() {
         searchField.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                renderResults(repository.search(s?.toString().orEmpty()))
+                bioScope.launch {
+                    renderResults(repository.search(s?.toString().orEmpty()))
+                }
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
-        renderResults(repository.getAllEntries())
+        bioScope.launch {
+            renderResults(repository.getAllEntries())
+        }
     }
 
     private fun renderResults(entries: List<BioEntry>) {
@@ -103,4 +113,9 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        bioScope.cancel()
+        super.onDestroy()
+    }
 }

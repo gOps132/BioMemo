@@ -1,19 +1,68 @@
 package com.example.biomemo.data
 
-class BioRepository {
-    fun getAllEntries(): List<BioEntry> = entries
+import com.example.biomemo.data.remote.SupabaseClientProvider
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-    fun getRecentEntries(limit: Int = 2): List<BioEntry> = entries.take(limit)
+interface BioRecordGateway {
+    suspend fun fetchBioRecords(limit: Int? = null): List<BioRecordRow>
+}
 
-    fun getEntryById(id: String): BioEntry? = entries.firstOrNull { it.id == id }
+@Serializable
+data class BioRecordRow(
+    val id: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    @SerialName("thumbnail_url") val thumbnailUrl: String? = null,
+    @SerialName("source_type") val sourceType: String,
+    @SerialName("observed_at") val observedAt: String? = null,
+    @SerialName("saved_at") val savedAt: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerialName("location_label") val locationLabel: String,
+    val notes: String? = null,
+    @SerialName("confidence_score") val confidenceScore: Int? = null,
+    @SerialName("verification_status") val verificationStatus: String,
+    @SerialName("metadata_availability") val metadataAvailability: String
+)
 
-    fun getStats(): BioStats = BioStats(
-        sightings = entries.size,
-        species = entries.map { it.scientificName }.distinct().size,
-        streak = "5d"
-    )
+class BioRepository(
+    private val gateway: BioRecordGateway = SupabaseBioRecordGateway()
+) {
+    suspend fun getAllEntries(): List<BioEntry> = gateway.fetchBioRecords().map { it.toBioEntry() }
 
-    fun search(query: String): List<BioEntry> {
+    suspend fun getRecentEntries(limit: Int = 2): List<BioEntry> {
+        return gateway.fetchBioRecords(limit).map { it.toBioEntry() }
+    }
+
+    suspend fun getEntryById(id: String): BioEntry? {
+        return getAllEntries().firstOrNull { it.id == id }
+    }
+
+    suspend fun getStats(): BioStats {
+        val entries = getAllEntries()
+        val identifiedSpecies = entries
+            .map { it.scientificName }
+            .filter { it != AWAITING_IDENTIFICATION }
+            .distinct()
+            .size
+
+        return BioStats(
+            sightings = entries.size,
+            species = identifiedSpecies,
+            streak = if (entries.isEmpty()) "0d" else "1d"
+        )
+    }
+
+    suspend fun search(query: String): List<BioEntry> {
+        val entries = getAllEntries()
         val normalizedQuery = query.trim().lowercase()
         if (normalizedQuery.isEmpty()) return entries
 
@@ -24,214 +73,81 @@ class BioRepository {
                 entry.category,
                 entry.location,
                 entry.notes,
-                entry.taxonomy,
-                entry.habitat,
-                entry.diet,
-                entry.distribution,
-                entry.conservationStatus,
+                entry.sourceType,
+                entry.verificationStatus,
+                entry.metadataAvailability,
                 entry.tags.joinToString(" ")
             ).any { value -> value.lowercase().contains(normalizedQuery) }
         }
     }
 
-    companion object {
-        private val entries = listOf(
-            BioEntry(
-                id = "red-fox",
-                commonName = "Red Fox",
-                scientificName = "Vulpes vulpes",
-                category = "Mammal",
-                date = "Mar 5, 2026",
-                location = "Cascade Trail, Oregon",
-                latitude = 44.0582,
-                longitude = -121.3153,
-                confidence = 98,
-                notes = "Spotted foraging near the forest edge at dusk with a white-tipped tail.",
-                tags = listOf("Carnivore", "Nocturnal", "Common"),
-                userId = "sample-user",
-                photoUrl = "local/sample/red-fox",
-                sourceType = "Sample Library",
-                observedDate = "Mar 5, 2026",
-                savedDate = "Mar 5, 2026",
-                verificationStatus = "Verified",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Mammalia > Carnivora > Canidae",
-                habitat = "Forest edges, meadows, farmland, and urban green spaces.",
-                diet = "Small mammals, birds, insects, fruit, and carrion.",
-                lifespan = "3-4 years in the wild; longer in protected care.",
-                distribution = "Broadly distributed across North America, Europe, Asia, and parts of North Africa.",
-                conservationStatus = "Least Concern",
-                sourceApi = "GBIF sample enrichment",
-                lastEnrichedDate = "Mar 5, 2026"
-            ),
-            BioEntry(
-                id = "monarch-butterfly",
-                commonName = "Monarch Butterfly",
-                scientificName = "Danaus plexippus",
-                category = "Insect",
-                date = "Mar 3, 2026",
-                location = "Sunflower Meadow, California",
-                latitude = 38.5781,
-                longitude = -121.4944,
-                confidence = 95,
-                notes = "Resting on milkweed mid-migration with bright orange and black wing pattern.",
-                tags = listOf("Migratory", "Pollinator", "Threatened"),
-                userId = "sample-user",
-                photoUrl = "local/sample/monarch-butterfly",
-                sourceType = "Sample Library",
-                observedDate = "Mar 3, 2026",
-                savedDate = "Mar 3, 2026",
-                verificationStatus = "Needs Review",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Arthropoda > Insecta > Lepidoptera > Nymphalidae",
-                habitat = "Milkweed patches, meadows, roadsides, gardens, and migration corridors.",
-                diet = "Adults feed on nectar; larvae feed on milkweed.",
-                lifespan = "2-6 weeks for most adults; migratory generation can live several months.",
-                distribution = "North America, with seasonal migration between Canada, the United States, and Mexico.",
-                conservationStatus = "Vulnerable",
-                sourceApi = "GBIF sample enrichment",
-                lastEnrichedDate = "Mar 3, 2026"
-            ),
-            BioEntry(
-                id = "red-squirrel",
-                commonName = "American Red Squirrel",
-                scientificName = "Tamiasciurus hudsonicus",
-                category = "Mammal",
-                date = "Feb 28, 2026",
-                location = "Pine Ridge, Washington",
-                latitude = 47.7511,
-                longitude = -120.7401,
-                confidence = 97,
-                notes = "Caching pine cones near a Douglas fir stand and chattering from above.",
-                tags = listOf("Diurnal", "Arboreal", "Common"),
-                userId = "sample-user",
-                photoUrl = "local/sample/red-squirrel",
-                sourceType = "Sample Library",
-                observedDate = "Feb 28, 2026",
-                savedDate = "Feb 28, 2026",
-                verificationStatus = "Verified",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Mammalia > Rodentia > Sciuridae",
-                habitat = "Conifer forests, mixed woods, and mature tree stands with cone crops.",
-                diet = "Conifer seeds, nuts, fungi, buds, berries, and occasional insects.",
-                lifespan = "3-5 years in the wild.",
-                distribution = "Boreal and montane forests across North America.",
-                conservationStatus = "Least Concern",
-                sourceApi = "GBIF sample enrichment",
-                lastEnrichedDate = "Feb 28, 2026"
-            ),
-            BioEntry(
-                id = "tree-frog",
-                commonName = "Pacific Tree Frog",
-                scientificName = "Pseudacris regilla",
-                category = "Amphibian",
-                date = "Feb 20, 2026",
-                location = "Elk Creek, Oregon",
-                latitude = 43.2165,
-                longitude = -123.3417,
-                confidence = 92,
-                notes = "Clinging to a sword fern near water after rain, calling loudly at dusk.",
-                tags = listOf("Nocturnal", "Indicator Species", "Common"),
-                userId = "sample-user",
-                photoUrl = "local/sample/tree-frog",
-                sourceType = "Sample Library",
-                observedDate = "Feb 20, 2026",
-                savedDate = "Feb 20, 2026",
-                verificationStatus = "Needs Review",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Amphibia > Anura > Hylidae",
-                habitat = "Wet forests, ponds, riparian vegetation, and damp meadows.",
-                diet = "Small insects, spiders, and other tiny invertebrates.",
-                lifespan = "2-4 years in the wild.",
-                distribution = "Pacific coastal regions of North America.",
-                conservationStatus = "Least Concern",
-                sourceApi = "GBIF sample enrichment",
-                lastEnrichedDate = "Feb 20, 2026"
-            ),
-            BioEntry(
-                id = "barn-owl",
-                commonName = "Barn Owl",
-                scientificName = "Tyto alba",
-                category = "Bird",
-                date = "Feb 15, 2026",
-                location = "Old Mill Road, Idaho",
-                latitude = 43.615,
-                longitude = -116.2023,
-                confidence = 99,
-                notes = "Perched on a fence post at twilight with a heart-shaped facial disk.",
-                tags = listOf("Nocturnal", "Raptor", "Near Threatened"),
-                userId = "sample-user",
-                photoUrl = "local/sample/barn-owl",
-                sourceType = "Sample Library",
-                observedDate = "Feb 15, 2026",
-                savedDate = "Feb 15, 2026",
-                verificationStatus = "Verified",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Aves > Strigiformes > Tytonidae",
-                habitat = "Open farmland, grasslands, marsh edges, barns, and quiet structures.",
-                diet = "Mostly rodents, especially voles, mice, and rats.",
-                lifespan = "2-4 years in the wild, though some individuals live longer.",
-                distribution = "Widespread across every continent except Antarctica.",
-                conservationStatus = "Near Threatened",
-                sourceApi = "IUCN sample enrichment",
-                lastEnrichedDate = "Feb 15, 2026"
-            ),
-            BioEntry(
-                id = "white-tailed-deer",
-                commonName = "White-tailed Deer",
-                scientificName = "Odocoileus virginianus",
-                category = "Mammal",
-                date = "Feb 10, 2026",
-                location = "Maple Grove, Montana",
-                latitude = 46.8797,
-                longitude = -110.3626,
-                confidence = 96,
-                notes = "Doe with two yearlings grazing at sunrise along the meadow edge.",
-                tags = listOf("Herbivore", "Crepuscular", "Abundant"),
-                userId = "sample-user",
-                photoUrl = "local/sample/white-tailed-deer",
-                sourceType = "Sample Library",
-                observedDate = "Feb 10, 2026",
-                savedDate = "Feb 10, 2026",
-                verificationStatus = "Verified",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Mammalia > Artiodactyla > Cervidae",
-                habitat = "Forest edges, fields, brushy areas, river bottoms, and suburban green corridors.",
-                diet = "Leaves, grasses, herbs, acorns, twigs, fruit, and agricultural crops.",
-                lifespan = "4-6 years in the wild on average.",
-                distribution = "North America, Central America, and parts of South America.",
-                conservationStatus = "Least Concern",
-                sourceApi = "GBIF sample enrichment",
-                lastEnrichedDate = "Feb 10, 2026"
-            ),
-            BioEntry(
-                id = "black-bear",
-                commonName = "American Black Bear",
-                scientificName = "Ursus americanus",
-                category = "Mammal",
-                date = "Feb 2, 2026",
-                location = "Ridgeline Loop, Washington",
-                latitude = 48.7519,
-                longitude = -121.812,
-                confidence = 99,
-                notes = "Observed at a safe distance near a berry thicket in early morning.",
-                tags = listOf("Omnivore", "Solitary", "Least Concern"),
-                userId = "sample-user",
-                photoUrl = "local/sample/black-bear",
-                sourceType = "Sample Library",
-                observedDate = "Feb 2, 2026",
-                savedDate = "Feb 2, 2026",
-                verificationStatus = "Verified",
-                metadataAvailability = "GPS coordinates available",
-                taxonomy = "Animalia > Chordata > Mammalia > Carnivora > Ursidae",
-                habitat = "Forests, mountains, wetlands, berry fields, and remote wooded corridors.",
-                diet = "Berries, nuts, insects, fish, carrion, roots, grasses, and occasional small mammals.",
-                lifespan = "10-20 years in the wild.",
-                distribution = "Forested regions across North America.",
-                conservationStatus = "Least Concern",
-                sourceApi = "IUCN sample enrichment",
-                lastEnrichedDate = "Feb 2, 2026"
-            )
+    private fun BioRecordRow.toBioEntry(): BioEntry {
+        val savedLabel = savedAt.toDisplayDate()
+        val observedLabel = observedAt?.toDisplayDate() ?: "Not recorded"
+        val statusLabel = verificationStatus.ifBlank { "draft" }
+        val metadataLabel = metadataAvailability.ifBlank { "unknown" }
+        val sourceLabel = sourceType.ifBlank { "unknown" }
+
+        return BioEntry(
+            id = id,
+            commonName = UNIDENTIFIED_COMMON_NAME,
+            scientificName = AWAITING_IDENTIFICATION,
+            category = "BioRecord",
+            date = savedLabel,
+            location = locationLabel.ifBlank { "location unknown" },
+            latitude = latitude,
+            longitude = longitude,
+            confidence = confidenceScore ?: 0,
+            notes = notes?.takeIf { it.isNotBlank() } ?: "No field notes yet.",
+            tags = listOf(statusLabel, metadataLabel, sourceLabel),
+            userId = userId,
+            photoUrl = thumbnailUrl ?: photoUrl.orEmpty(),
+            sourceType = sourceLabel,
+            observedDate = observedLabel,
+            savedDate = savedLabel,
+            verificationStatus = statusLabel,
+            metadataAvailability = metadataLabel,
+            taxonomy = NOT_ENRICHED,
+            habitat = NOT_ENRICHED,
+            diet = NOT_ENRICHED,
+            lifespan = NOT_ENRICHED,
+            distribution = NOT_ENRICHED,
+            conservationStatus = NOT_ENRICHED,
+            sourceApi = "Pending identification",
+            lastEnrichedDate = NOT_ENRICHED
         )
+    }
+
+    private fun String.toDisplayDate(): String {
+        return try {
+            OffsetDateTime.parse(this).format(DISPLAY_DATE_FORMATTER)
+        } catch (_: Throwable) {
+            take(10).ifBlank { "Unknown date" }
+        }
+    }
+
+    private companion object {
+        const val UNIDENTIFIED_COMMON_NAME = "Unidentified organism"
+        const val AWAITING_IDENTIFICATION = "Awaiting identification"
+        const val NOT_ENRICHED = "Not enriched yet"
+        val DISPLAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+    }
+}
+
+class SupabaseBioRecordGateway(
+    private val client: SupabaseClient = SupabaseClientProvider.client
+) : BioRecordGateway {
+    override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
+        val userId = client.auth.currentUserOrNull()?.id ?: return emptyList()
+
+        return client.from("bio_records")
+            .select {
+                filter {
+                    eq("user_id", userId)
+                }
+                order("saved_at", Order.DESCENDING)
+                limit?.let { limit(it.toLong()) }
+            }
+            .decodeList<BioRecordRow>()
     }
 }
