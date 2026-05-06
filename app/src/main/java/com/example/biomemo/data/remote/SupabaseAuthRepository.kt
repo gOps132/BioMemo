@@ -28,6 +28,7 @@ interface SupabaseAuthGateway {
     suspend fun signUp(email: String, password: String, metadata: Map<String, String>): AuthUser?
     suspend fun signIn(email: String, password: String): AuthUser?
     suspend fun signInWithGoogle(redirectUrl: String)
+    suspend fun restorePersistedSession()
     suspend fun resolveLoginEmail(identifier: String): String?
     suspend fun signOut()
     fun hasActiveSession(): Boolean
@@ -92,6 +93,10 @@ class SupabaseAuthRepository(
             gateway.signInWithGoogle(AppConfig.authRedirectUrl)
             null
         }
+    }
+
+    suspend fun restorePersistedSession() {
+        gateway.restorePersistedSession()
     }
 
     fun hasActiveSession(): Boolean = gateway.hasActiveSession()
@@ -183,6 +188,10 @@ class SupabaseAuthSdkGateway(
 
     override suspend fun signInWithGoogle(redirectUrl: String) {
         client.auth.signInWith(Google, redirectUrl = redirectUrl.urlEncoded())
+    }
+
+    override suspend fun restorePersistedSession() {
+        client.auth.awaitInitialization()
     }
 
     override suspend fun resolveLoginEmail(identifier: String): String? {

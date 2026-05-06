@@ -8,9 +8,13 @@ enum class SplashDestination {
 }
 
 class SplashRouteDecider(
+    private val restorePersistedSession: suspend () -> Unit = {
+        SupabaseAuthRepository().restorePersistedSession()
+    },
     private val hasActiveSession: () -> Boolean = { SupabaseAuthRepository().hasActiveSession() }
 ) {
-    fun decideDestination(): SplashDestination {
+    suspend fun decideDestination(): SplashDestination {
+        restorePersistedSession()
         return if (hasActiveSession()) SplashDestination.DASHBOARD else SplashDestination.LOGIN
     }
 }

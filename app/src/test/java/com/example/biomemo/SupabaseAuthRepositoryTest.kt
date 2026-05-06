@@ -127,6 +127,16 @@ class SupabaseAuthRepositoryTest {
         assertTrue(gateway.googleSignInCalled)
         assertEquals(AppConfig.authRedirectUrl, gateway.googleSignInRedirectUrl)
     }
+
+    @Test
+    fun restorePersistedSessionDelegatesToGateway() = runBlocking {
+        val gateway = FakeAuthGateway()
+        val repository = SupabaseAuthRepository(gateway)
+
+        repository.restorePersistedSession()
+
+        assertTrue(gateway.restorePersistedSessionCalled)
+    }
 }
 
 private class FakeAuthGateway(
@@ -143,6 +153,7 @@ private class FakeAuthGateway(
     var signUpMetadata: Map<String, String> = emptyMap()
     var signInCalled = false
     var googleSignInCalled = false
+    var restorePersistedSessionCalled = false
     var googleSignInRedirectUrl: String? = null
     var signInEmail: String? = null
     var signInPassword: String? = null
@@ -169,6 +180,11 @@ private class FakeAuthGateway(
         failure?.let { throw it }
         googleSignInCalled = true
         googleSignInRedirectUrl = redirectUrl
+    }
+
+    override suspend fun restorePersistedSession() {
+        failure?.let { throw it }
+        restorePersistedSessionCalled = true
     }
 
     override suspend fun resolveLoginEmail(identifier: String): String? {
