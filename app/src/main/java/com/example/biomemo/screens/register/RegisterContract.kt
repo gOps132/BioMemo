@@ -8,6 +8,7 @@ interface RegisterContract {
     }
 
     interface Presenter {
-        fun onRegisterClicked(user: String, pass: String, rePass: String)
+        suspend fun onRegisterClicked(email: String, fieldName: String, pass: String, rePass: String)
+        suspend fun onGoogleSignInClicked()
     }
 }

@@ -9,212 +9,162 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingLeft="24dp"
+        android:paddingTop="64dp"
+        android:paddingRight="24dp"
+        android:paddingBottom="28dp">
 
-        <LinearLayout
+        <ImageView
+            android:id="@+id/imageviewLogo"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:contentDescription="BioMemo Logo"
+            android:scaleType="fitCenter"
+            android:src="@drawable/biomemo_icon_noborder" />
+
+        <TextView
+            android:id="@+id/textviewWelcome"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:background="@drawable/bg_hero_gradient"
-            android:gravity="bottom|center_horizontal"
-            android:orientation="vertical"
-            android:paddingLeft="28dp"
-            android:paddingRight="28dp"
-            android:paddingBottom="30dp">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:text="BioMemo"
+            android:textColor="@color/bio_forest_700"
+            android:textSize="36sp"
+            android:textStyle="bold" />
 
-            <LinearLayout
-                android:layout_width="104dp"
-                android:layout_height="104dp"
-                android:layout_marginBottom="3dp"
-                android:gravity="center">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="34dp"
+            android:gravity="center"
+            android:text="Login"
+            android:textColor="@color/bio_ink"
+            android:textSize="24sp"
+            android:textStyle="bold" />
 
-                <ImageView
-                    android:id="@+id/imageviewLogo"
-                    android:layout_width="94dp"
-                    android:layout_height="94dp"
-                    android:contentDescription="BioMemo Logo"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/biomemo_icon_noborder" />
-            </LinearLayout>
+        <EditText
+            android:id="@+id/edittextUsername"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/bg_input_field"
+            android:hint="Username or email"
+            android:inputType="text"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:textColor="@color/bio_ink"
+            android:textColorHint="#839487"
+            android:textSize="16sp" />
 
-            <TextView
-                android:id="@+id/textviewWelcome"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="BioMemo"
-                android:textColor="@color/white"
-                android:textSize="34sp"
-                android:textStyle="bold" />
+        <EditText
+            android:id="@+id/edittextPassword"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input_field"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:textColor="@color/bio_ink"
+            android:textColorHint="#839487"
+            android:textSize="16sp" />
 
-            <TextView
-                android:id="@+id/textviewLoginSubtitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:text="Discover · Identify · Remember"
-                android:textColor="#BFEBCB"
-                android:textSize="15sp" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/textviewLoginError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/bio_danger"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/buttonLogin"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/bg_button_primary"
+            android:backgroundTint="@null"
+            android:text="Login"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:backgroundTint="@null" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:text="Forgot password?"
+            android:textColor="@color/bio_forest_600"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textviewGoogleSignIn"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/bg_button_secondary"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="Login with Google"
+            android:textColor="@color/bio_forest_600"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingLeft="24dp"
-            android:paddingTop="28dp"
-            android:paddingRight="24dp"
-            android:paddingBottom="28dp">
+            android:layout_marginTop="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/viewDividerLeft"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/bio_line" />
 
             <TextView
+                android:id="@+id/textviewDividerOr"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Welcome back, explorer"
-                android:textColor="@color/bio_ink"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="24dp"
-                android:text="Create BioRecords, map discoveries, and keep every encounter close."
+                android:layout_marginLeft="14dp"
+                android:layout_marginRight="14dp"
+                android:text="or"
                 android:textColor="@color/bio_ink_muted"
                 android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/textviewUsernameLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:letterSpacing="0.08"
-                android:text="USERNAME OR EMAIL"
-                android:textColor="@color/bio_ink_muted"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/edittextUsername"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:layout_marginBottom="18dp"
-                android:background="@drawable/bg_input_field"
-                android:hint="Enter your username"
-                android:inputType="text"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
-                android:textColor="@color/bio_ink"
-                android:textColorHint="#839487"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/textviewPasswordLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:letterSpacing="0.08"
-                android:text="PASSWORD"
-                android:textColor="@color/bio_ink_muted"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/edittextPassword"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_input_field"
-                android:hint="Enter your password"
-                android:inputType="textPassword"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
-                android:textColor="@color/bio_ink"
-                android:textColorHint="#839487"
-                android:textSize="16sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="22dp"
-                android:gravity="end"
-                android:text="Forgot password?"
-                android:textColor="@color/bio_forest_600"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/buttonLogin"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/bg_button_primary"
-                android:backgroundTint="@null"
-                android:text="Continue with email"
-                android:textAllCaps="false"
-                android:textColor="@color/white"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                app:backgroundTint="@null" />
-
-            <TextView
-                android:id="@+id/textviewGoogleSignIn"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/bg_button_secondary"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="Continue with Google"
-                android:textColor="@color/bio_forest_600"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:id="@+id/viewDividerLeft"
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1"
-                    android:background="@color/bio_line" />
-
-                <TextView
-                    android:id="@+id/textviewDividerOr"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="14dp"
-                    android:layout_marginRight="14dp"
-                    android:text="or"
-                    android:textColor="@color/bio_ink_muted"
-                    android:textSize="14sp" />
-
-                <View
-                    android:id="@+id/viewDividerRight"
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1"
-                    android:background="@color/bio_line" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/textviewCreateAccount"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:background="@drawable/bg_button_secondary"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="Create new account"
-                android:textColor="@color/bio_forest_600"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+            <View
+                android:id="@+id/viewDividerRight"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/bio_line" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/textviewCreateAccount"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_button_secondary"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="Create new account"
+            android:textColor="@color/bio_forest_600"
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </ScrollView>
