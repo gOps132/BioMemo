@@ -2,8 +2,6 @@ package com.example.biomemo.screens.splash
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.app.Activity.OVERRIDE_TRANSITION_OPEN
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
@@ -11,18 +9,26 @@ import com.example.biomemo.data.remote.SupabaseClientProvider
 import com.example.biomemo.screens.dashboard.DashboardActivity
 import com.example.biomemo.screens.login.LoginActivity
 import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class SplashActivity : AppCompatActivity() {
     private val routeDecider = SplashRouteDecider()
-    private val handler = Handler(Looper.getMainLooper())
-    private val navigateRunnable = Runnable { navigateNext() }
+    private val splashScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleAuthCallback(intent)
         setContentView(R.layout.activity_splash)
 
-        handler.postDelayed(navigateRunnable, SPLASH_DELAY_MS)
+        splashScope.launch {
+            delay(SPLASH_DELAY_MS)
+            navigateNext()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -31,11 +37,11 @@ class SplashActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(navigateRunnable)
+        splashScope.cancel()
         super.onDestroy()
     }
 
-    private fun navigateNext() {
+    private suspend fun navigateNext() {
         val nextActivity = when (routeDecider.decideDestination()) {
             SplashDestination.LOGIN -> LoginActivity::class.java
             SplashDestination.DASHBOARD -> DashboardActivity::class.java

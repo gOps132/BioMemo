@@ -3,9 +3,10 @@ package com.example.biomemo.screens.profile
 interface ProfileContract {
     interface View {
         fun logout()
+        fun showError(message: String)
     }
 
     interface Presenter {
-        fun onLogoutClicked()
+        suspend fun onLogoutClicked()
     }
 }

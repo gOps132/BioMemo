@@ -39,7 +39,7 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     }
 
     override fun displayWelcome(username: String) {
-        findViewById<TextView>(R.id.textviewDashboardWelcome).text = "Welcome, $username"
+        findViewById<TextView>(R.id.textviewDashboardWelcome).text = "BioDashboard"
     }
 
     private fun renderRecentBioRecords(entries: List<BioEntry>) {
