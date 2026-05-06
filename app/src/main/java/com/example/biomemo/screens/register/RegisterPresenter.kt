@@ -1,13 +1,14 @@
 package com.example.biomemo.screens.register
 
+import com.example.biomemo.data.remote.SupabaseAuthResult
+
 class RegisterPresenter(
     private val view: RegisterContract.View,
-    private val model: RegisterModel
+    private val model: RegisterAuthModel
 ) : RegisterContract.Presenter {
 
-    override fun onRegisterClicked(user: String, pass: String, rePass: String) {
-        // Validation Logic
-        if (user.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
+    override suspend fun onRegisterClicked(email: String, fieldName: String, pass: String, rePass: String) {
+        if (email.isEmpty() || fieldName.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
             view.showError("Please complete all fields")
             return
         }
@@ -17,13 +18,19 @@ class RegisterPresenter(
             return
         }
 
-        // Logic to save user
-        val success = model.registerUser(user, pass)
-        if (success) {
-            view.showSuccess("Registration successful")
-            view.navigateToLogin()
-        } else {
-            view.showError("User already exists")
+        when (val result = model.registerUser(email, pass, fieldName)) {
+            is SupabaseAuthResult.Success -> {
+                view.showSuccess("Registration successful")
+                view.navigateToLogin()
+            }
+            is SupabaseAuthResult.Failure -> view.showError(result.message)
+        }
+    }
+
+    override suspend fun onGoogleSignInClicked() {
+        when (val result = model.continueWithGoogle()) {
+            is SupabaseAuthResult.Success -> view.showSuccess("Continue in your browser to finish Google sign-in.")
+            is SupabaseAuthResult.Failure -> view.showError(result.message)
         }
     }
 }

@@ -2,6 +2,7 @@ package com.example.biomemo.screens.login
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -10,12 +11,19 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.screens.dashboard.DashboardActivity
 import com.example.biomemo.screens.register.RegisterActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity(), LoginContract.View {
 
     private lateinit var presenter: LoginPresenter
     private lateinit var etUsername: EditText
     private lateinit var etPassword: EditText
+    private lateinit var textviewLoginError: TextView
+    private val authScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,15 +33,19 @@ class LoginActivity : AppCompatActivity(), LoginContract.View {
 
         etUsername = findViewById(R.id.edittextUsername)
         etPassword = findViewById(R.id.edittextPassword)
+        textviewLoginError = findViewById(R.id.textviewLoginError)
         val btnLogin = findViewById<Button>(R.id.buttonLogin)
         val tvGoogleSignIn = findViewById<TextView>(R.id.textviewGoogleSignIn)
         val tvCreateAccount = findViewById<TextView>(R.id.textviewCreateAccount)
 
         btnLogin.setOnClickListener {
-            presenter.onLoginClicked(
-                etUsername.text.toString().trim(),
-                etPassword.text.toString().trim()
-            )
+            clearLoginError()
+            authScope.launch {
+                presenter.onLoginClicked(
+                    etUsername.text.toString().trim(),
+                    etPassword.text.toString().trim()
+                )
+            }
         }
 
         tvCreateAccount.setOnClickListener {
@@ -41,16 +53,26 @@ class LoginActivity : AppCompatActivity(), LoginContract.View {
         }
 
         tvGoogleSignIn.setOnClickListener {
-            presenter.onGoogleSignInClicked()
+            clearLoginError()
+            authScope.launch {
+                presenter.onGoogleSignInClicked()
+            }
         }
     }
 
     override fun showLoginSuccess(username: String) {
+        clearLoginError()
         Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show()
     }
 
+    override fun showGoogleAuthStarted() {
+        clearLoginError()
+        Toast.makeText(this, "Continue in your browser to finish Google sign-in.", Toast.LENGTH_LONG).show()
+    }
+
     override fun showError(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        textviewLoginError.text = message
+        textviewLoginError.visibility = View.VISIBLE
     }
 
     override fun navigateToRegister() {
@@ -62,5 +84,15 @@ class LoginActivity : AppCompatActivity(), LoginContract.View {
         intent.putExtra("username", username)
         startActivity(intent)
         finish()
+    }
+
+    override fun onDestroy() {
+        authScope.cancel()
+        super.onDestroy()
+    }
+
+    private fun clearLoginError() {
+        textviewLoginError.text = ""
+        textviewLoginError.visibility = View.GONE
     }
 }

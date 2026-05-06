@@ -70,6 +70,31 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 android:letterSpacing="0.08"
+                android:text="EMAIL"
+                android:textColor="@color/bio_ink_muted"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/edittextEmail"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_input_field"
+                android:hint="Enter your email"
+                android:inputType="textEmailAddress"
+                android:paddingLeft="18dp"
+                android:paddingRight="18dp"
+                android:textColor="@color/bio_ink"
+                android:textColorHint="#839487"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/textviewRegisterFieldNameLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:letterSpacing="0.08"
                 android:text="USERNAME"
                 android:textColor="@color/bio_ink_muted"
                 android:textSize="12sp"
@@ -81,7 +106,7 @@
                 android:layout_height="58dp"
                 android:layout_marginBottom="16dp"
                 android:background="@drawable/bg_input_field"
-                android:hint="Choose a field name"
+                android:hint="Choose a username"
                 android:inputType="text"
                 android:paddingLeft="18dp"
                 android:paddingRight="18dp"
@@ -138,6 +163,16 @@
                 android:textColor="@color/bio_ink"
                 android:textColorHint="#839487"
                 android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/textviewRegisterError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:textColor="@color/bio_danger"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <TextView
                 android:layout_width="match_parent"

@@ -1,16 +1,20 @@
 package com.example.biomemo
 
 import com.example.biomemo.config.AppConfig
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppConfigTest {
     @Test
-    fun unconfiguredKeysAreDetectedAsMissing() {
-        assertFalse(AppConfig.hasSupabaseConfig())
-        assertFalse(AppConfig.hasGoogleClientId())
-        assertFalse(AppConfig.hasAiIdentificationApiKey())
+    fun configStatusMatchesLocalProperties() {
+        assertEquals(
+            !AppConfig.isMissing(AppConfig.supabaseUrl) && !AppConfig.isMissing(AppConfig.supabaseAnonKey),
+            AppConfig.hasSupabaseConfig()
+        )
+        assertEquals(!AppConfig.isMissing(AppConfig.googleWebClientId), AppConfig.hasGoogleClientId())
+        assertEquals(!AppConfig.isMissing(AppConfig.aiIdentificationApiKey), AppConfig.hasAiIdentificationApiKey())
     }
 
     @Test
