@@ -17,10 +17,16 @@ import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class BioMapActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private val repository = BioRepository()
+    private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,10 +35,12 @@ class BioMapActivity : AppCompatActivity() {
 
         MainBottomNav.setup(this, MainNavDestination.RECORDS, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
 
-        val entries = repository.getAllEntries().filter { it.latitude != null && it.longitude != null }
         mapView = findViewById(R.id.mapviewBioMap)
-        setupMap(entries)
-        setupChrome(entries)
+        bioScope.launch {
+            val entries = repository.getAllEntries().filter { it.latitude != null && it.longitude != null }
+            setupMap(entries)
+            setupChrome(entries)
+        }
     }
 
     override fun onResume() {
@@ -43,6 +51,11 @@ class BioMapActivity : AppCompatActivity() {
     override fun onPause() {
         if (::mapView.isInitialized) mapView.onPause()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        bioScope.cancel()
+        super.onDestroy()
     }
 
     private fun setupMap(entries: List<BioEntry>) {

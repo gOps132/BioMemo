@@ -12,9 +12,15 @@ import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class BioCollectionActivity : AppCompatActivity() {
     private val repository = BioRepository()
+    private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,12 +28,18 @@ class BioCollectionActivity : AppCompatActivity() {
 
         MainBottomNav.setup(this, MainNavDestination.RECORDS, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
 
-        renderEntries(repository.getAllEntries())
+        bioScope.launch {
+            renderEntries(repository.getAllEntries())
+        }
     }
 
     private fun renderEntries(entries: List<BioEntry>) {
         val container = findViewById<LinearLayout>(R.id.linearlayoutBioEntries)
         container.removeAllViews()
+        if (entries.isEmpty()) {
+            container.addView(text("No BioRecords yet. Add your first observation from the capture tab.", 15, R.color.bio_ink_muted, false))
+            return
+        }
         entries.forEach { entry -> container.addView(createEntryCard(entry)) }
     }
 
@@ -88,4 +100,9 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        bioScope.cancel()
+        super.onDestroy()
+    }
 }

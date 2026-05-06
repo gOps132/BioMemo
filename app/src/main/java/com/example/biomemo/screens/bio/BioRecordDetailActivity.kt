@@ -10,9 +10,15 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class BioRecordDetailActivity : AppCompatActivity() {
     private val repository = BioRepository()
+    private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,14 +27,16 @@ class BioRecordDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.textviewBioRecordBack).setOnClickListener { finish() }
 
         val entryId = intent.getStringExtra(EXTRA_ENTRY_ID).orEmpty()
-        val entry = repository.getEntryById(entryId)
-        if (entry == null) {
-            Toast.makeText(this, "BioRecord not found", Toast.LENGTH_SHORT).show()
-            finish()
-            return
-        }
+        bioScope.launch {
+            val entry = repository.getEntryById(entryId)
+            if (entry == null) {
+                Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()
+                finish()
+                return@launch
+            }
 
-        renderEntry(entry)
+            renderEntry(entry)
+        }
     }
 
     private fun renderEntry(entry: BioEntry) {
@@ -121,6 +129,11 @@ class BioRecordDetailActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        bioScope.cancel()
+        super.onDestroy()
+    }
 
     companion object {
         const val EXTRA_ENTRY_ID = "bio_record_id"

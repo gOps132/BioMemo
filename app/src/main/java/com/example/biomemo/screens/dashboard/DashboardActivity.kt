@@ -14,11 +14,17 @@ import com.example.biomemo.data.BioRepository
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private lateinit var presenter: DashboardPresenter
     private var currentUsername: String = ""
     private val bioRepository = BioRepository()
+    private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,12 +36,13 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         presenter.start(currentUsername)
         MainBottomNav.setup(this, MainNavDestination.HOME, currentUsername)
 
-        val stats = bioRepository.getStats()
-        findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
-        findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
-        findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
-
-        renderRecentBioRecords(bioRepository.getRecentEntries(3))
+        bioScope.launch {
+            val stats = bioRepository.getStats()
+            findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
+            findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
+            findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
+            renderRecentBioRecords(bioRepository.getRecentEntries(3))
+        }
     }
 
     override fun displayWelcome(username: String) {
@@ -45,6 +52,10 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private fun renderRecentBioRecords(entries: List<BioEntry>) {
         val container = findViewById<LinearLayout>(R.id.linearlayoutRecentBioRecords)
         container.removeAllViews()
+        if (entries.isEmpty()) {
+            container.addView(text("No BioRecords yet. Capture or upload a photo to start your field journal.", 15, R.color.bio_ink_muted, false))
+            return
+        }
         entries.forEach { entry -> container.addView(createRecentRecordCard(entry)) }
     }
 
@@ -107,4 +118,9 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        bioScope.cancel()
+        super.onDestroy()
+    }
 }
