@@ -6,6 +6,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.data.ExplorerProfile
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.login.LoginActivity
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 class ProfileActivity : AppCompatActivity(), ProfileContract.View {
 
     private lateinit var presenter: ProfilePresenter
+    private lateinit var username: TextView
+    private lateinit var email: TextView
     private val authScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,13 +28,22 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
         setContentView(R.layout.activity_profile)
 
         presenter = ProfilePresenter(this)
+        username = findViewById(R.id.textviewUsername)
+        email = findViewById(R.id.textviewEmail)
 
-        val username = intent.getStringExtra(MainBottomNav.EXTRA_USERNAME)
-        MainBottomNav.setup(this, MainNavDestination.PROFILE, username)
+        val navUsername = intent.getStringExtra(MainBottomNav.EXTRA_USERNAME)
+        MainBottomNav.setup(this, MainNavDestination.PROFILE, navUsername)
 
         findViewById<TextView>(R.id.textviewProfileLogout).setOnClickListener {
             authScope.launch { presenter.onLogoutClicked() }
         }
+
+        authScope.launch { presenter.onProfileOpened() }
+    }
+
+    override fun showProfile(profile: ExplorerProfile) {
+        username.text = profile.username.displayOr("Not set")
+        email.text = profile.email.displayOr("Not available")
     }
 
     override fun logout() {
@@ -46,5 +58,9 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
     override fun onDestroy() {
         authScope.cancel()
         super.onDestroy()
+    }
+
+    private fun String?.displayOr(fallback: String): String {
+        return this?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
     }
 }
