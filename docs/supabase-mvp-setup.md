@@ -9,16 +9,30 @@ sign in -> capture/upload photo -> create draft BioRecord -> identify -> confirm
 ## Create The Supabase Project
 
 1. Create a new Supabase project in the Supabase dashboard.
-2. Copy the project URL and anon key into `local.properties`:
+2. Copy the project URL and anon key into `local.properties` for release builds:
 
 ```properties
-SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_PROD_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_PROD_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 GOOGLE_WEB_CLIENT_ID=
 AI_IDENTIFICATION_API_KEY=
 ```
 
 Do not commit real values.
+
+3. For debug builds, run the local Supabase stack and copy its anon key into `local.properties`:
+
+```bash
+supabase start
+supabase status
+```
+
+```properties
+SUPABASE_DEV_URL=http://10.0.2.2:54321
+SUPABASE_DEV_ANON_KEY=YOUR_LOCAL_SUPABASE_ANON_KEY
+```
+
+`10.0.2.2` is the Android emulator route to localhost on the development machine. Use your machine LAN IP instead when testing on a physical device.
 
 ## Enable Google OAuth
 

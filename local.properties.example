@@ -1,6 +1,14 @@
 # Copy these into local.properties for local development.
 # Never commit real API keys or secrets.
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
+
+# Debug builds use the local Supabase stack.
+# Android emulator reaches host localhost through 10.0.2.2.
+SUPABASE_DEV_URL=http://10.0.2.2:54321
+SUPABASE_DEV_ANON_KEY=
+
+# Release builds use the production Supabase project.
+SUPABASE_PROD_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_PROD_ANON_KEY=
+
 GOOGLE_WEB_CLIENT_ID=
 AI_IDENTIFICATION_API_KEY=
