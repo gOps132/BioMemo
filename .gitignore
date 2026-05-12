@@ -36,6 +36,12 @@ GEMINI.md
 .claudeignore
 .codexignore
 docs/superpowers/
+.agents/
+.worktrees/
+supabase/.branches/
+docs/PRODUCT.md
+docs/DESIGN.md
+.impeccable.md
 .agents/cache/
 .agents/tmp/
 .agents/logs/
