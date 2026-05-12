@@ -13,29 +13,13 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="210dp"
+            android:layout_height="150dp"
             android:background="@drawable/bg_hero_gradient"
             android:gravity="bottom"
             android:orientation="vertical"
             android:paddingLeft="24dp"
             android:paddingRight="24dp"
             android:paddingBottom="28dp">
-
-            <LinearLayout
-                android:layout_width="84dp"
-                android:layout_height="84dp"
-                android:layout_marginBottom="14dp"
-                android:gravity="center">
-
-                <ImageView
-                    android:id="@+id/imageviewRegisterLogo"
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
-                    android:contentDescription="BioMemo Logo"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/biomemo_icon_noborder" />
-            </LinearLayout>
-
             <TextView
                 android:id="@+id/textviewRegisterTitle"
                 android:layout_width="match_parent"
@@ -173,16 +157,6 @@
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="18dp"
-                android:background="@drawable/bg_card_mint"
-                android:padding="16dp"
-                android:text="Tip: Use this app as a field notebook for species, places, and quick memory cues."
-                android:textColor="@color/bio_forest_700"
-                android:textSize="14sp" />
 
             <Button
                 android:id="@+id/buttonSubmit"

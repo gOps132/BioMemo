@@ -18,6 +18,7 @@ import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
+import com.example.biomemo.screens.species.SpeciesReferenceDetailActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -116,7 +117,9 @@ class SearchActivity : AppCompatActivity() {
     }
 
     private fun speciesCard(species: SpeciesSearchResult): LinearLayout {
-        val card = resultCard(clickable = false)
+        val card = resultCard(clickable = true).apply {
+            setOnClickListener { openSpeciesReference(species) }
+        }
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -126,14 +129,36 @@ class SearchActivity : AppCompatActivity() {
             addView(text(species.commonName ?: species.canonicalName, 17, R.color.bio_ink, true))
             addView(text(species.scientificName, 13, R.color.bio_ink_muted, false))
             addView(text(species.taxonomyLine(), 13, R.color.bio_forest_600, true))
-            addView(text("GBIF ${species.gbifUsageKey} · ${species.taxonomicStatus}", 12, R.color.bio_ink_muted, false))
+            addView(text("${species.sourceName} · ${species.taxonomicStatus.displayStatus()}", 12, R.color.bio_ink_muted, false))
         })
         return card
+    }
+
+    private fun openSpeciesReference(species: SpeciesSearchResult) {
+        startActivity(
+            Intent(this, SpeciesReferenceDetailActivity::class.java)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_GBIF_USAGE_KEY, species.gbifUsageKey)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_SCIENTIFIC_NAME, species.scientificName)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_CANONICAL_NAME, species.canonicalName)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_COMMON_NAME, species.commonName)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_RANK, species.rank)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_TAXONOMIC_STATUS, species.taxonomicStatus)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_KINGDOM, species.kingdom)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_PHYLUM, species.phylum)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_CLASS_NAME, species.className)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_ORDER, species.order)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_FAMILY, species.family)
+                .putExtra(SpeciesReferenceDetailActivity.EXTRA_GENUS, species.genus)
+        )
     }
 
     private fun SpeciesSearchResult.taxonomyLine(): String {
         return listOfNotNull(family, genus, rank.lowercase().replaceFirstChar { it.uppercase() })
             .joinToString(" · ")
+    }
+
+    private fun String.displayStatus(): String {
+        return lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 
     private fun resultCard(clickable: Boolean): LinearLayout = LinearLayout(this).apply {

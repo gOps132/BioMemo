@@ -23,6 +23,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".screens.species.SpeciesReferenceDetailActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".screens.capture.CaptureActivity"
             android:exported="false" />
 
