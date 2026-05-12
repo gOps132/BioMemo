@@ -30,7 +30,9 @@
 ## Supabase Deployment Risk
 
 - [ ] No Supabase migration change
+- [ ] No Supabase Edge Function change
 - [ ] Migration is safe to apply on production after merge to `main`
+- [ ] Edge Function changes are safe to deploy after merge to `main`
 - [ ] Destructive migration has rollback or mitigation notes
 - [ ] Dashboard schema edits, if any, were pulled back into migrations
 
