@@ -32,13 +32,21 @@ mcp.json
 .mcp.json
 CLAUDE.md
 GEMINI.md
+AGENTS.md
+Agent.md
 .cursorignore
 .claudeignore
 .codexignore
 docs/superpowers/
+.agents/
 .agents/cache/
 .agents/tmp/
 .agents/logs/
+.worktrees/
+supabase/.branches/
+docs/PRODUCT.md
+docs/DESIGN.md
+.impeccable.md
 
 # Machine-local IDE and agent skill bundles
 /.idea/
