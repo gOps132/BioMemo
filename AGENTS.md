@@ -30,7 +30,7 @@
 - Use pull requests into `main` for shared work. Required checks are `Android Unit Test`, `Android Build`, and `Supabase DB Test`.
 - Agent handoff order is: run the local verification hook, review the diff, stage the intended files only, commit, push the feature branch, then open or update the pull request.
 - Do not commit before the local pass is green unless the user explicitly accepts the failed or skipped verification and the commit message/PR notes explain it.
-- Merging a green PR to `main` triggers the production Supabase migration workflow after the `production` GitHub Environment approval gate.
+- Merging a green PR to `main` triggers the production Supabase workflow after the `production` GitHub Environment approval gate. That workflow pushes database migrations and deploys the `species-search` and `species-enrichment-preview` Edge Functions.
 - Before PR handoff, run relevant local verification for touched areas. For Android resources or manifest changes, include `./gradlew :app:assembleDebug`.
 - Do not commit generated planning, critique, audit, prompt, or agent context artifacts unless the user explicitly asks to track them.
 - Never expose production Supabase secrets to pull request workflows. Production migration secrets belong only in GitHub Actions secrets and the `production` Environment.
