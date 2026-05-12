@@ -1,6 +1,8 @@
 package com.example.biomemo
 
 import com.example.biomemo.data.GbifSpeciesSearchRow
+import com.example.biomemo.data.SpeciesEnrichmentPreview
+import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceGateway
 import com.example.biomemo.data.SpeciesSourceRepository
 import kotlinx.coroutines.runBlocking
@@ -98,6 +100,82 @@ class SpeciesSourceRepositoryTest {
     }
 
     @Test
+    fun searchRanksCommonNameMatchesBeforeScientificNameMatches() = runBlocking {
+        val repository = SpeciesSourceRepository(
+            FakeSpeciesSourceGateway(
+                listOf(
+                    row(
+                        key = 1001,
+                        scientificName = "Mycobacterium phage Giraffe",
+                        canonicalName = "Mycobacterium phage Giraffe",
+                        commonName = null,
+                        kingdom = "Heunggongvirae",
+                        phylum = "Uroviricota",
+                        className = "Caudoviricetes",
+                        order = null,
+                        family = null,
+                        genus = "Pegunavirus"
+                    ),
+                    row(
+                        key = 2441176,
+                        scientificName = "Giraffa camelopardalis Linnaeus, 1758",
+                        canonicalName = "Giraffa camelopardalis",
+                        commonName = "Giraffe",
+                        kingdom = "Animalia",
+                        phylum = "Chordata",
+                        className = "Mammalia",
+                        order = "Artiodactyla",
+                        family = "Giraffidae",
+                        genus = "Giraffa"
+                    )
+                )
+            )
+        )
+
+        val results = repository.searchSpecies("giraffe")
+
+        assertEquals("Giraffa camelopardalis", results.first().canonicalName)
+    }
+
+    @Test
+    fun searchRanksCommonNamesEndingWithQueryBeforeNamesStartingWithQuery() = runBlocking {
+        val repository = SpeciesSourceRepository(
+            FakeSpeciesSourceGateway(
+                listOf(
+                    row(
+                        key = 2552247,
+                        scientificName = "Peniophora albobadia (Schwein.) Boidin",
+                        canonicalName = "Peniophora albobadia",
+                        commonName = "Giraffe Spots",
+                        kingdom = "Fungi",
+                        phylum = "Basidiomycota",
+                        className = "Agaricomycetes",
+                        order = "Russulales",
+                        family = "Peniophoraceae",
+                        genus = "Peniophora"
+                    ),
+                    row(
+                        key = 8959277,
+                        scientificName = "Giraffa giraffa (von Schreber, 1784)",
+                        canonicalName = "Giraffa giraffa",
+                        commonName = "Southern Giraffe",
+                        kingdom = "Animalia",
+                        phylum = "Chordata",
+                        className = "Mammalia",
+                        order = "Artiodactyla",
+                        family = "Giraffidae",
+                        genus = "Giraffa"
+                    )
+                )
+            )
+        )
+
+        val results = repository.searchSpecies("giraffe")
+
+        assertEquals("Giraffa giraffa", results.first().canonicalName)
+    }
+
+    @Test
     fun blankSearchDoesNotCallGateway() = runBlocking {
         val gateway = FakeSpeciesSourceGateway(emptyList())
         val repository = SpeciesSourceRepository(gateway)
@@ -160,6 +238,10 @@ class SpeciesSourceRepositoryTest {
         override suspend fun searchGbifSpecies(query: String): List<GbifSpeciesSearchRow> {
             calls += 1
             return rows
+        }
+
+        override suspend fun previewSpeciesEnrichment(species: SpeciesSearchResult): SpeciesEnrichmentPreview {
+            return SpeciesEnrichmentPreview()
         }
     }
 }

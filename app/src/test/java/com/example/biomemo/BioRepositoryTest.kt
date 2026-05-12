@@ -2,7 +2,9 @@ package com.example.biomemo
 
 import com.example.biomemo.data.BioRecordGateway
 import com.example.biomemo.data.BioRecordRow
+import com.example.biomemo.data.BioRecordPhotoUpload
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.NewBioRecordDraft
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -62,6 +64,59 @@ class BioRepositoryTest {
         assertEquals(null, repository.getEntryById("other-record"))
     }
 
+    @Test
+    fun createDraftUploadRecordStoresPhotoUnderPrivateUserPathBeforeInsert() = runBlocking {
+        val gateway = FakeBioRecordGateway(emptyList(), userId = "user-123")
+        val repository = BioRepository(gateway, recordIdProvider = { "record-abc" })
+
+        val entry = repository.createDraftUploadRecord(
+            BioRecordPhotoUpload(
+                bytes = byteArrayOf(1, 2, 3),
+                contentType = "image/png"
+            )
+        )
+
+        assertEquals("record-abc", entry.id)
+        assertEquals("upload", entry.sourceType)
+        assertEquals("draft", entry.verificationStatus)
+        assertEquals("user-123/record-abc/original.png", entry.photoUrl)
+        assertEquals("user-123/record-abc/original.png", gateway.uploadedPath)
+        assertEquals("image/png", gateway.uploadedContentType)
+        assertEquals(byteArrayOf(1, 2, 3).toList(), gateway.uploadedBytes?.toList())
+        assertEquals(
+            NewBioRecordDraft(
+                id = "record-abc",
+                userId = "user-123",
+                photoUrl = "user-123/record-abc/original.png",
+                sourceType = "upload",
+                verificationStatus = "draft",
+                metadataAvailability = "unknown"
+            ),
+            gateway.insertedDraft
+        )
+    }
+
+    @Test
+    fun createDraftUploadRecordFailsBeforeUploadWhenUserMissing() = runBlocking {
+        val gateway = FakeBioRecordGateway(emptyList(), userId = null)
+        val repository = BioRepository(gateway, recordIdProvider = { "record-abc" })
+
+        var thrown: Throwable? = null
+        try {
+            repository.createDraftUploadRecord(
+                BioRecordPhotoUpload(
+                    bytes = byteArrayOf(1, 2, 3),
+                    contentType = "image/jpeg"
+                )
+            )
+        } catch (error: Throwable) {
+            thrown = error
+        }
+        assertTrue(thrown is IllegalStateException)
+        assertEquals(null, gateway.uploadedPath)
+        assertEquals(null, gateway.insertedDraft)
+    }
+
     private fun sampleRow(
         id: String = "record-1",
         locationLabel: String = "Mossy Creek"
@@ -85,10 +140,44 @@ class BioRepositoryTest {
     }
 
     private class FakeBioRecordGateway(
-        private val rows: List<BioRecordRow>
+        private val rows: List<BioRecordRow>,
+        private val userId: String? = "user-1"
     ) : BioRecordGateway {
+        var uploadedPath: String? = null
+        var uploadedBytes: ByteArray? = null
+        var uploadedContentType: String? = null
+        var insertedDraft: NewBioRecordDraft? = null
+
         override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
             return limit?.let { rows.take(it) } ?: rows
+        }
+
+        override suspend fun currentUserId(): String? = userId
+
+        override suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String) {
+            uploadedPath = path
+            uploadedBytes = bytes
+            uploadedContentType = contentType
+        }
+
+        override suspend fun insertBioRecordDraft(draft: NewBioRecordDraft): BioRecordRow {
+            insertedDraft = draft
+            return BioRecordRow(
+                id = draft.id,
+                userId = draft.userId,
+                photoUrl = draft.photoUrl,
+                thumbnailUrl = null,
+                sourceType = draft.sourceType,
+                observedAt = null,
+                savedAt = "2026-05-07T00:00:00Z",
+                latitude = null,
+                longitude = null,
+                locationLabel = "location unknown",
+                notes = null,
+                confidenceScore = null,
+                verificationStatus = draft.verificationStatus,
+                metadataAvailability = draft.metadataAvailability
+            )
         }
     }
 }
