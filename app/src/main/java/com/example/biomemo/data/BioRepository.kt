@@ -7,6 +7,8 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.OffsetDateTime
@@ -49,8 +51,14 @@ data class NewBioRecordDraft(
     val id: String,
     @SerialName("user_id") val userId: String,
     @SerialName("photo_url") val photoUrl: String,
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
     @SerialName("source_type") val sourceType: String = "upload",
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
     @SerialName("verification_status") val verificationStatus: String = "draft",
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
     @SerialName("metadata_availability") val metadataAvailability: String = "unknown"
 )
 

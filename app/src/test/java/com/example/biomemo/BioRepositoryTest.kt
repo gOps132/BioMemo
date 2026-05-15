@@ -5,6 +5,8 @@ import com.example.biomemo.data.BioRecordRow
 import com.example.biomemo.data.BioRecordPhotoUpload
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.NewBioRecordDraft
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -94,6 +96,19 @@ class BioRepositoryTest {
             ),
             gateway.insertedDraft
         )
+    }
+
+    @Test
+    fun draftUploadPayloadIncludesRequiredSourceType() {
+        val payload = Json.encodeToString(
+            NewBioRecordDraft(
+                id = "record-abc",
+                userId = "user-123",
+                photoUrl = "user-123/record-abc/original.png"
+            )
+        )
+
+        assertTrue(payload.contains("\"source_type\""))
     }
 
     @Test
