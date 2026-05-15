@@ -37,6 +37,7 @@ android {
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperty("GOOGLE_WEB_CLIENT_ID")}\"")
         buildConfigField("String", "AI_IDENTIFICATION_API_KEY", "\"${localProperty("AI_IDENTIFICATION_API_KEY")}\"")
+        buildConfigField("boolean", "LOCAL_SUPABASE", "false")
     }
 
     buildFeatures {
@@ -45,12 +46,14 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_URL", "SUPABASE_PROD_URL")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_ANON_KEY", "SUPABASE_PROD_ANON_KEY")}\"")
+            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_DEV_URL", "SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_DEV_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
+            buildConfigField("boolean", "LOCAL_SUPABASE", "${localProperties.containsKey("SUPABASE_DEV_URL") && localProperties.containsKey("SUPABASE_DEV_ANON_KEY")}")
         }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
+            buildConfigField("boolean", "LOCAL_SUPABASE", "false")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

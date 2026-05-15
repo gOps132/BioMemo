@@ -7,12 +7,14 @@ object AppConfig {
     val supabaseAnonKey: String = BuildConfig.SUPABASE_ANON_KEY
     val googleWebClientId: String = BuildConfig.GOOGLE_WEB_CLIENT_ID
     val aiIdentificationApiKey: String = BuildConfig.AI_IDENTIFICATION_API_KEY
+    val isLocalSupabase: Boolean = BuildConfig.LOCAL_SUPABASE
     const val authRedirectScheme: String = "biomemo"
     const val authRedirectHost: String = "auth-callback"
     const val authRedirectUrl: String = "$authRedirectScheme://$authRedirectHost"
 
     fun hasSupabaseConfig(): Boolean = !isMissing(supabaseUrl) && !isMissing(supabaseAnonKey)
     fun hasGoogleClientId(): Boolean = !isMissing(googleWebClientId)
+    fun canUseGoogleSignIn(): Boolean = hasGoogleClientId() && !isLocalSupabase
     fun hasAiIdentificationApiKey(): Boolean = !isMissing(aiIdentificationApiKey)
 
     fun isMissing(value: String?): Boolean {

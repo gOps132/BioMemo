@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.config.AppConfig
 import com.example.biomemo.screens.dashboard.DashboardActivity
 import com.example.biomemo.screens.register.RegisterActivity
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,8 @@ class LoginActivity : AppCompatActivity(), LoginContract.View {
         val btnLogin = findViewById<Button>(R.id.buttonLogin)
         val tvGoogleSignIn = findViewById<TextView>(R.id.textviewGoogleSignIn)
         val tvCreateAccount = findViewById<TextView>(R.id.textviewCreateAccount)
+
+        tvGoogleSignIn.visibility = if (AppConfig.canUseGoogleSignIn()) View.VISIBLE else View.GONE
 
         btnLogin.setOnClickListener {
             clearLoginError()
