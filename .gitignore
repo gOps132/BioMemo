@@ -11,6 +11,7 @@
 /build
 /captures
 supabase/.temp/
+supabase/.env.local
 .externalNativeBuild
 .cxx
 local.properties

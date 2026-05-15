@@ -29,6 +29,10 @@ type GeminiGenerateContentResponse = {
   }>;
 };
 
+type IdentifyImageResult =
+  | { ok: true; candidates: Candidate[] }
+  | { ok: false; error: string };
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -84,7 +88,13 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "BioRecord photo is too large for inline identification" }, 413);
   }
 
-  const candidates = await identifyImage(image);
+  const identification = await identifyImage(image);
+  if (!identification.ok) {
+    console.error("Image identification failed", identification.error);
+    return jsonResponse({ error: identification.error }, 502);
+  }
+
+  const candidates = identification.candidates;
   if (candidates.length === 0) {
     await updateBioRecordStatus(bioRecordId, authHeader, { verification_status: "failed" });
     return jsonResponse({ candidates: [] });
@@ -133,10 +143,10 @@ async function fetchStoredImage(path: string, authHeader: string): Promise<{ byt
   return { bytes, mimeType };
 }
 
-async function identifyImage(image: { bytes: Uint8Array; mimeType: string }): Promise<Candidate[]> {
+async function identifyImage(image: { bytes: Uint8Array; mimeType: string }): Promise<IdentifyImageResult> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
-    return [];
+    return { ok: false, error: "GEMINI_API_KEY is not configured" };
   }
 
   const response = await fetch(
@@ -163,12 +173,27 @@ async function identifyImage(image: { bytes: Uint8Array; mimeType: string }): Pr
         }],
       }),
     },
-  ).catch(() => null);
-  if (!response?.ok) return [];
+  ).catch((error) => {
+    console.error("Gemini request failed", error);
+    return null;
+  });
+  if (!response) {
+    return { ok: false, error: "Gemini image identification request failed" };
+  }
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    console.error("Gemini image identification returned non-OK status", response.status, errorBody);
+    return { ok: false, error: `Gemini image identification failed with HTTP ${response.status}` };
+  }
 
   const gemini = (await response.json().catch(() => null)) as GeminiGenerateContentResponse | null;
   const text = gemini?.candidates?.[0]?.content?.parts?.[0]?.text;
-  return parseCandidateResponse(text).slice(0, 3);
+  const candidates = parseCandidateResponse(text);
+  if (!candidates) {
+    console.error("Gemini image identification returned an unparsable response", text ?? "");
+    return { ok: false, error: "Gemini image identification response could not be parsed" };
+  }
+  return { ok: true, candidates: candidates.slice(0, 3) };
 }
 
 async function insertCandidates(bioRecordId: string, candidates: Candidate[], authHeader: string): Promise<Candidate[]> {
@@ -210,15 +235,15 @@ async function updateBioRecordStatus(
   }).catch(() => null);
 }
 
-function parseCandidateResponse(text: string | undefined): Candidate[] {
-  if (!text) return [];
+function parseCandidateResponse(text: string | undefined): Candidate[] | null {
+  if (!text) return null;
   const jsonText = text
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
   const parsed = safeParseCandidates(jsonText);
-  if (!parsed) return [];
+  if (!parsed) return null;
   return (parsed.candidates ?? [])
     .map((candidate) => ({
       common_name: clean(candidate.common_name),
