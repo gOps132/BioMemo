@@ -85,8 +85,9 @@ class CaptureActivity : AppCompatActivity() {
                     )
                 }
                 .onFailure { error ->
-                    statusText.text = "Upload failed. Check sign-in and try again."
-                    Toast.makeText(this@CaptureActivity, error.message ?: "Upload failed.", Toast.LENGTH_LONG).show()
+                    val message = error.message ?: "Upload failed."
+                    statusText.text = message
+                    Toast.makeText(this@CaptureActivity, message, Toast.LENGTH_LONG).show()
                 }
         }
     }

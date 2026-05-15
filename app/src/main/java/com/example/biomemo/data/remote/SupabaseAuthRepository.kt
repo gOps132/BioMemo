@@ -213,7 +213,7 @@ class SupabaseAuthSdkGateway(
     }
 
     override fun currentUser(): AuthUser? {
-        return client.auth.currentUserOrNull().toAuthUser()
+        return client.auth.currentSessionOrNull()?.user.toAuthUser() ?: client.auth.currentUserOrNull().toAuthUser()
     }
 
     private fun UserInfo?.toAuthUser(): AuthUser? {

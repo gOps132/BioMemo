@@ -202,7 +202,7 @@ class SupabaseBioRecordGateway(
     }
 
     override suspend fun currentUserId(): String? {
-        return client.auth.currentUserOrNull()?.id
+        return client.auth.currentSessionOrNull()?.user?.id ?: client.auth.currentUserOrNull()?.id
     }
 
     override suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String) {
