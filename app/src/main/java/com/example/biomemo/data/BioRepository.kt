@@ -11,16 +11,22 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import kotlin.time.Duration.Companion.hours
 
 interface BioRecordGateway {
     suspend fun fetchBioRecords(limit: Int? = null): List<BioRecordRow>
     suspend fun currentUserId(): String?
     suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String)
     suspend fun insertBioRecordDraft(draft: NewBioRecordDraft): BioRecordRow
+    suspend fun insertImageMetadata(metadata: NewImageMetadata)
+    suspend fun createSignedPhotoUrl(path: String): String
 }
 
 @Serializable
@@ -43,7 +49,19 @@ data class BioRecordRow(
 
 data class BioRecordPhotoUpload(
     val bytes: ByteArray,
-    val contentType: String
+    val contentType: String,
+    val metadata: BioRecordPhotoMetadata = BioRecordPhotoMetadata()
+)
+
+data class BioRecordPhotoMetadata(
+    val capturedAt: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val orientation: Int? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val metadataAvailability: String = "unknown",
+    val raw: Map<String, String> = emptyMap()
 )
 
 @Serializable
@@ -54,12 +72,28 @@ data class NewBioRecordDraft(
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault
     @SerialName("source_type") val sourceType: String = "upload",
+    @SerialName("observed_at") val observedAt: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault
     @SerialName("verification_status") val verificationStatus: String = "draft",
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault
     @SerialName("metadata_availability") val metadataAvailability: String = "unknown"
+)
+
+@Serializable
+data class NewImageMetadata(
+    @SerialName("bio_record_id") val bioRecordId: String,
+    @SerialName("captured_at") val capturedAt: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val orientation: Int? = null,
+    @SerialName("file_type") val fileType: String,
+    val width: Int? = null,
+    val height: Int? = null,
+    @SerialName("metadata_raw") val metadataRaw: JsonObject = buildJsonObject { }
 )
 
 class BioRepository(
@@ -121,9 +155,32 @@ class BioRepository(
             NewBioRecordDraft(
                 id = recordId,
                 userId = userId,
-                photoUrl = photoPath
+                photoUrl = photoPath,
+                observedAt = photo.metadata.capturedAt,
+                latitude = photo.metadata.latitude,
+                longitude = photo.metadata.longitude,
+                metadataAvailability = photo.metadata.metadataAvailability
             )
-        ).toBioEntry()
+        ).also {
+            gateway.insertImageMetadata(
+                NewImageMetadata(
+                    bioRecordId = recordId,
+                    capturedAt = photo.metadata.capturedAt,
+                    latitude = photo.metadata.latitude,
+                    longitude = photo.metadata.longitude,
+                    orientation = photo.metadata.orientation,
+                    fileType = photo.contentType,
+                    width = photo.metadata.width,
+                    height = photo.metadata.height,
+                    metadataRaw = photo.metadata.raw.toJsonObject()
+                )
+            )
+        }.toBioEntry()
+    }
+
+    suspend fun createSignedPhotoUrl(path: String): String {
+        require(path.isNotBlank()) { "Photo path is missing." }
+        return gateway.createSignedPhotoUrl(path)
     }
 
     private fun BioRecordRow.toBioEntry(): BioEntry {
@@ -179,6 +236,12 @@ class BioRepository(
     }
 }
 
+private fun Map<String, String>.toJsonObject(): JsonObject {
+    return buildJsonObject {
+        forEach { (key, value) -> put(key, value) }
+    }
+}
+
 object BioRecordPhotoPath {
     fun forOriginal(userId: String, recordId: String, contentType: String): String {
         val extension = when (contentType.lowercase()) {
@@ -196,7 +259,7 @@ class SupabaseBioRecordGateway(
     private val client: SupabaseClient = SupabaseClientProvider.client
 ) : BioRecordGateway {
     override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
-        val userId = client.auth.currentUserOrNull()?.id ?: return emptyList()
+        val userId = currentUserId() ?: return emptyList()
 
         return client.from("bio_records")
             .select {
@@ -227,6 +290,16 @@ class SupabaseBioRecordGateway(
                 select()
             }
             .decodeSingle<BioRecordRow>()
+    }
+
+    override suspend fun insertImageMetadata(metadata: NewImageMetadata) {
+        client.from("image_metadata")
+            .insert(metadata)
+    }
+
+    override suspend fun createSignedPhotoUrl(path: String): String {
+        return client.storage.from(BIORECORD_PHOTO_BUCKET)
+            .createSignedUrl(path, expiresIn = 1.hours)
     }
 
     private companion object {

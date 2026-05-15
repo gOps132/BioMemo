@@ -1,5 +1,6 @@
 package com.example.biomemo.screens.bio
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -15,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 class BioRecordDetailActivity : AppCompatActivity() {
     private val repository = BioRepository()
@@ -40,12 +43,14 @@ class BioRecordDetailActivity : AppCompatActivity() {
     }
 
     private fun renderEntry(entry: BioEntry) {
-        findViewById<ImageView>(R.id.imageviewBioRecordHero).contentDescription = "${entry.commonName} photo"
+        val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
+        heroImage.contentDescription = "${entry.commonName} photo"
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
         findViewById<TextView>(R.id.textviewBioRecordScientificName).text = entry.scientificName
         findViewById<TextView>(R.id.textviewBioRecordHeroMeta).text =
             "${entry.category} · ${entry.confidence}% match · ${entry.verificationStatus}"
         findViewById<TextView>(R.id.textviewBioRecordNotes).text = entry.notes
+        loadHeroPhoto(entry, heroImage)
 
         renderRows(
             R.id.linearlayoutObservationDetails,
@@ -79,6 +84,27 @@ class BioRecordDetailActivity : AppCompatActivity() {
         )
 
         renderTags(entry.tags)
+    }
+
+    private fun loadHeroPhoto(entry: BioEntry, imageView: ImageView) {
+        if (entry.photoUrl.isBlank()) return
+        bioScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = if (entry.photoUrl.startsWith("http")) {
+                        entry.photoUrl
+                    } else {
+                        repository.createSignedPhotoUrl(entry.photoUrl)
+                    }
+                    URL(url).openStream().use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
+            if (bitmap != null) {
+                imageView.setPadding(0, 0, 0, 0)
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+        }
     }
 
     private fun renderRows(containerId: Int, title: String, rows: List<Pair<String, String>>) {

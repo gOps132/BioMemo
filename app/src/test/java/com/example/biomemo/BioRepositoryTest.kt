@@ -1,10 +1,12 @@
 package com.example.biomemo
 
 import com.example.biomemo.data.BioRecordGateway
+import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRecordRow
 import com.example.biomemo.data.BioRecordPhotoUpload
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.NewBioRecordDraft
+import com.example.biomemo.data.NewImageMetadata
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
@@ -74,7 +76,17 @@ class BioRepositoryTest {
         val entry = repository.createDraftUploadRecord(
             BioRecordPhotoUpload(
                 bytes = byteArrayOf(1, 2, 3),
-                contentType = "image/png"
+                contentType = "image/png",
+                metadata = BioRecordPhotoMetadata(
+                    capturedAt = "2026-05-05T10:15:30Z",
+                    latitude = 14.5995,
+                    longitude = 120.9842,
+                    orientation = 1,
+                    width = 1024,
+                    height = 768,
+                    metadataAvailability = "capture time and GPS available",
+                    raw = mapOf("camera" to "field-cam")
+                )
             )
         )
 
@@ -91,11 +103,23 @@ class BioRepositoryTest {
                 userId = "user-123",
                 photoUrl = "user-123/record-abc/original.png",
                 sourceType = "upload",
+                observedAt = "2026-05-05T10:15:30Z",
+                latitude = 14.5995,
+                longitude = 120.9842,
                 verificationStatus = "draft",
-                metadataAvailability = "unknown"
+                metadataAvailability = "capture time and GPS available"
             ),
             gateway.insertedDraft
         )
+        assertEquals("record-abc", gateway.insertedImageMetadata?.bioRecordId)
+        assertEquals("2026-05-05T10:15:30Z", gateway.insertedImageMetadata?.capturedAt)
+        assertEquals(14.5995, gateway.insertedImageMetadata?.latitude)
+        assertEquals(120.9842, gateway.insertedImageMetadata?.longitude)
+        assertEquals(1, gateway.insertedImageMetadata?.orientation)
+        assertEquals("image/png", gateway.insertedImageMetadata?.fileType)
+        assertEquals(1024, gateway.insertedImageMetadata?.width)
+        assertEquals(768, gateway.insertedImageMetadata?.height)
+        assertEquals("field-cam", gateway.insertedImageMetadata?.metadataRaw?.get("camera")?.toString()?.trim('"'))
     }
 
     @Test
@@ -130,6 +154,18 @@ class BioRepositoryTest {
         assertTrue(thrown is IllegalStateException)
         assertEquals(null, gateway.uploadedPath)
         assertEquals(null, gateway.insertedDraft)
+        assertEquals(null, gateway.insertedImageMetadata)
+    }
+
+    @Test
+    fun signedPhotoUrlDelegatesToGateway() = runBlocking {
+        val gateway = FakeBioRecordGateway(emptyList(), signedUrl = "https://signed.example/photo.jpg")
+        val repository = BioRepository(gateway)
+
+        val url = repository.createSignedPhotoUrl("user-123/record-abc/original.jpg")
+
+        assertEquals("https://signed.example/photo.jpg", url)
+        assertEquals("user-123/record-abc/original.jpg", gateway.signedPhotoPath)
     }
 
     private fun sampleRow(
@@ -156,12 +192,15 @@ class BioRepositoryTest {
 
     private class FakeBioRecordGateway(
         private val rows: List<BioRecordRow>,
-        private val userId: String? = "user-1"
+        private val userId: String? = "user-1",
+        private val signedUrl: String = "https://signed.example/default.jpg"
     ) : BioRecordGateway {
         var uploadedPath: String? = null
         var uploadedBytes: ByteArray? = null
         var uploadedContentType: String? = null
         var insertedDraft: NewBioRecordDraft? = null
+        var insertedImageMetadata: NewImageMetadata? = null
+        var signedPhotoPath: String? = null
 
         override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
             return limit?.let { rows.take(it) } ?: rows
@@ -183,16 +222,25 @@ class BioRepositoryTest {
                 photoUrl = draft.photoUrl,
                 thumbnailUrl = null,
                 sourceType = draft.sourceType,
-                observedAt = null,
+                observedAt = draft.observedAt,
                 savedAt = "2026-05-07T00:00:00Z",
-                latitude = null,
-                longitude = null,
+                latitude = draft.latitude,
+                longitude = draft.longitude,
                 locationLabel = "location unknown",
                 notes = null,
                 confidenceScore = null,
                 verificationStatus = draft.verificationStatus,
                 metadataAvailability = draft.metadataAvailability
             )
+        }
+
+        override suspend fun insertImageMetadata(metadata: NewImageMetadata) {
+            insertedImageMetadata = metadata
+        }
+
+        override suspend fun createSignedPhotoUrl(path: String): String {
+            signedPhotoPath = path
+            return signedUrl
         }
     }
 }
