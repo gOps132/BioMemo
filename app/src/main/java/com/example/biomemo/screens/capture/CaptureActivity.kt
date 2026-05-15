@@ -64,7 +64,7 @@ class CaptureActivity : AppCompatActivity() {
 
     private fun uploadSelectedPhoto(uri: Uri) {
         uploadAction.isEnabled = false
-        statusText.text = "Uploading private BioRecord photo..."
+        statusText.text = "Uploading and identifying private BioRecord photo..."
 
         captureScope.launch {
             val result = runCatching {
@@ -85,8 +85,13 @@ class CaptureActivity : AppCompatActivity() {
             uploadAction.isEnabled = true
             result
                 .onSuccess { entry ->
-                    statusText.text = "Draft saved. Ready for AI identification next."
-                    Toast.makeText(this@CaptureActivity, "BioRecord draft saved.", Toast.LENGTH_SHORT).show()
+                    val identified = entry.scientificName != "Awaiting identification"
+                    statusText.text = if (identified) {
+                        "BioRecord identified. Review candidate match."
+                    } else {
+                        "Draft saved. Identification still pending."
+                    }
+                    Toast.makeText(this@CaptureActivity, statusText.text, Toast.LENGTH_SHORT).show()
                     startActivity(
                         Intent(this@CaptureActivity, BioRecordDetailActivity::class.java)
                             .putExtra(BioRecordDetailActivity.EXTRA_ENTRY_ID, entry.id)

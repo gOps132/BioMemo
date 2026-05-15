@@ -5,6 +5,7 @@ import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRecordRow
 import com.example.biomemo.data.BioRecordPhotoUpload
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.IdentificationCandidateRow
 import com.example.biomemo.data.NewBioRecordDraft
 import com.example.biomemo.data.NewImageMetadata
 import kotlinx.serialization.encodeToString
@@ -40,6 +41,35 @@ class BioRepositoryTest {
         assertEquals("Fern Ridge", repository.search("fern").single().location)
         assertEquals(1, repository.search("draft").size)
         assertTrue(repository.search("missing").isEmpty())
+    }
+
+    @Test
+    fun mapsBestIdentificationCandidateToDisplayEntry() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-candidate")),
+                identificationCandidates = listOf(
+                    IdentificationCandidateRow(
+                        bioRecordId = "record-with-candidate",
+                        commonName = "Asian common toad",
+                        scientificName = "Duttaphrynus melanostictus",
+                        confidenceScore = 82,
+                        reasoning = "Warty skin and parotoid glands are visible.",
+                        visibleTraits = "Brown warty skin; stout body",
+                        uncertaintyNotes = "Photo angle hides feet.",
+                        selected = true
+                    )
+                )
+            )
+        )
+
+        val entry = repository.getEntryById("record-with-candidate")
+
+        assertEquals("Asian common toad", entry?.commonName)
+        assertEquals("Duttaphrynus melanostictus", entry?.scientificName)
+        assertEquals(82, entry?.confidence)
+        assertEquals("Gemini image identification", entry?.sourceApi)
+        assertTrue(entry?.notes?.contains("AI reasoning: Warty skin") == true)
     }
 
     @Test
@@ -96,6 +126,7 @@ class BioRepositoryTest {
         assertEquals("user-123/record-abc/original.png", entry.photoUrl)
         assertEquals("user-123/record-abc/original.png", gateway.uploadedPath)
         assertEquals("image/png", gateway.uploadedContentType)
+        assertEquals("record-abc", gateway.identifiedRecordId)
         assertEquals(byteArrayOf(1, 2, 3).toList(), gateway.uploadedBytes?.toList())
         assertEquals(
             NewBioRecordDraft(
@@ -155,6 +186,7 @@ class BioRepositoryTest {
         assertEquals(null, gateway.uploadedPath)
         assertEquals(null, gateway.insertedDraft)
         assertEquals(null, gateway.insertedImageMetadata)
+        assertEquals(null, gateway.identifiedRecordId)
     }
 
     @Test
@@ -193,17 +225,23 @@ class BioRepositoryTest {
     private class FakeBioRecordGateway(
         private val rows: List<BioRecordRow>,
         private val userId: String? = "user-1",
-        private val signedUrl: String = "https://signed.example/default.jpg"
+        private val signedUrl: String = "https://signed.example/default.jpg",
+        private val identificationCandidates: List<IdentificationCandidateRow> = emptyList()
     ) : BioRecordGateway {
         var uploadedPath: String? = null
         var uploadedBytes: ByteArray? = null
         var uploadedContentType: String? = null
         var insertedDraft: NewBioRecordDraft? = null
         var insertedImageMetadata: NewImageMetadata? = null
+        var identifiedRecordId: String? = null
         var signedPhotoPath: String? = null
 
         override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
             return limit?.let { rows.take(it) } ?: rows
+        }
+
+        override suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow> {
+            return identificationCandidates
         }
 
         override suspend fun currentUserId(): String? = userId
@@ -236,6 +274,11 @@ class BioRepositoryTest {
 
         override suspend fun insertImageMetadata(metadata: NewImageMetadata) {
             insertedImageMetadata = metadata
+        }
+
+        override suspend fun identifyBioRecordImage(recordId: String): List<IdentificationCandidateRow> {
+            identifiedRecordId = recordId
+            return identificationCandidates.filter { it.bioRecordId == recordId }
         }
 
         override suspend fun createSignedPhotoUrl(path: String): String {
