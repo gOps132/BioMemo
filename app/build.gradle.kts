@@ -12,13 +12,13 @@ val localProperties = Properties().apply {
     }
 }
 
-fun localProperty(name: String, defaultValue: String = ""): String =
-    localProperties.getProperty(name, defaultValue)
-
 fun localPropertyWithFallback(name: String, fallbackName: String, defaultValue: String = ""): String =
     localProperties.getProperty(name)
         ?: localProperties.getProperty(fallbackName)
         ?: defaultValue
+
+fun localProperty(name: String, defaultValue: String = ""): String =
+    localProperties.getProperty(name, defaultValue)
 
 android {
     namespace = "com.example.biomemo"
@@ -45,8 +45,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "SUPABASE_URL", "\"${localProperty("SUPABASE_DEV_URL", "http://10.0.2.2:54321")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperty("SUPABASE_DEV_ANON_KEY")}\"")
+            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_URL", "SUPABASE_PROD_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_ANON_KEY", "SUPABASE_PROD_ANON_KEY")}\"")
         }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")

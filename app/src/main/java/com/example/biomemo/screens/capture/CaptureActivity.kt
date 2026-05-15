@@ -42,10 +42,17 @@ class CaptureActivity : AppCompatActivity() {
         uploadAction = findViewById(R.id.textviewUploadPhotoAction)
         statusText = findViewById(R.id.textviewCaptureConfigStatus)
         uploadAction.setOnClickListener {
-            uploadPhotoPicker.launch("image/*")
+            openUploadPicker()
         }
 
         statusText.text = "Upload a field photo to create a private BioRecord draft."
+        if (intent.getBooleanExtra(EXTRA_OPEN_UPLOAD_PICKER, false)) {
+            window.decorView.post { openUploadPicker() }
+        }
+    }
+
+    fun openUploadPicker() {
+        uploadPhotoPicker.launch("image/*")
     }
 
     private fun uploadSelectedPhoto(uri: Uri) {
@@ -87,5 +94,9 @@ class CaptureActivity : AppCompatActivity() {
     override fun onDestroy() {
         captureScope.cancel()
         super.onDestroy()
+    }
+
+    companion object {
+        const val EXTRA_OPEN_UPLOAD_PICKER = "open_upload_picker"
     }
 }

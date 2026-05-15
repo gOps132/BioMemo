@@ -1,6 +1,7 @@
 package com.example.biomemo.navigation
 
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -12,6 +13,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
+import com.example.biomemo.screens.capture.CaptureActivity
 
 object CaptureActionSheet {
     fun show(activity: AppCompatActivity) {
@@ -36,8 +38,16 @@ object CaptureActionSheet {
             dismissWithAnimation(dialog, sheet)
         }
         dialog.findViewById<View>(R.id.actionUploadPhoto).setOnClickListener {
-            Toast.makeText(activity, "Photo upload and metadata extraction are planned next.", Toast.LENGTH_SHORT).show()
             dismissWithAnimation(dialog, sheet)
+            if (activity is CaptureActivity) {
+                activity.openUploadPicker()
+            } else {
+                activity.startActivity(
+                    Intent(activity, CaptureActivity::class.java)
+                        .putExtra(CaptureActivity.EXTRA_OPEN_UPLOAD_PICKER, true)
+                        .putExtra(MainBottomNav.EXTRA_USERNAME, activity.intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
+                )
+            }
         }
 
         dialog.show()
