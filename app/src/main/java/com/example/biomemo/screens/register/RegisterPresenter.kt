@@ -7,8 +7,8 @@ class RegisterPresenter(
     private val model: RegisterAuthModel
 ) : RegisterContract.Presenter {
 
-    override suspend fun onRegisterClicked(email: String, fieldName: String, pass: String, rePass: String) {
-        if (email.isEmpty() || fieldName.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
+    override suspend fun onRegisterClicked(email: String, username: String, pass: String, rePass: String) {
+        if (email.isEmpty() || username.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
             view.showError("Please complete all fields")
             return
         }
@@ -18,7 +18,7 @@ class RegisterPresenter(
             return
         }
 
-        when (val result = model.registerUser(email, pass, fieldName)) {
+        when (val result = model.registerUser(email, pass, username)) {
             is SupabaseAuthResult.Success -> {
                 view.showSuccess("Registration successful")
                 view.navigateToLogin()

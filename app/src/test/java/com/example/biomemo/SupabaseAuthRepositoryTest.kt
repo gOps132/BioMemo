@@ -13,26 +13,20 @@ import org.junit.Test
 
 class SupabaseAuthRepositoryTest {
     @Test
-    fun signUpTrimsEmailAndFieldNameAndPassesMetadata() = runBlocking {
+    fun signUpTrimsEmailAndUsernameAndPassesMetadata() = runBlocking {
         val gateway = FakeAuthGateway(signUpUser = AuthUser("user-1", "fern@biomemo.app"))
         val repository = SupabaseAuthRepository(gateway)
 
         val result = repository.signUp(
             email = "  fern@biomemo.app  ",
             password = "secret123",
-            fieldName = "  Fern Keeper  "
+            username = "  fernkeeper  "
         )
 
         assertTrue(result is SupabaseAuthResult.Success)
         assertEquals("fern@biomemo.app", gateway.signUpEmail)
         assertEquals("secret123", gateway.signUpPassword)
-        assertEquals(
-            mapOf(
-                "field_name" to "Fern Keeper",
-                "username" to "Fern Keeper"
-            ),
-            gateway.signUpMetadata
-        )
+        assertEquals(mapOf("username" to "fernkeeper"), gateway.signUpMetadata)
     }
 
     @Test
@@ -73,7 +67,7 @@ class SupabaseAuthRepositoryTest {
         val result = repository.signUp(
             email = "fern@biomemo.app",
             password = "secret123",
-            fieldName = "fern"
+            username = "fern"
         )
 
         assertTrue(result is SupabaseAuthResult.Failure)

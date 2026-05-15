@@ -40,7 +40,7 @@ values (
     '',
     '',
     '{"provider":"email","providers":["email"]}'::jsonb,
-    '{"field_name":"Demo Explorer","username":"demo"}'::jsonb,
+    '{"username":"demo"}'::jsonb,
     false,
     false,
     now(),
@@ -94,18 +94,15 @@ set
 insert into public.profiles (
     id,
     email,
-    username,
-    field_name
+    username
 )
 values (
     '11111111-1111-1111-1111-111111111111',
     'demo@biomemo.dev',
-    'demo',
-    'Demo Explorer'
+    'demo'
 )
 on conflict (id) do update
 set
     email = excluded.email,
     username = excluded.username,
-    field_name = excluded.field_name,
     updated_at = now();

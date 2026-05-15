@@ -38,15 +38,15 @@ interface SupabaseAuthGateway {
 class SupabaseAuthRepository(
     private val gateway: SupabaseAuthGateway = SupabaseAuthSdkGateway()
 ) {
-    suspend fun signUp(email: String, password: String, fieldName: String): SupabaseAuthResult {
+    suspend fun signUp(email: String, password: String, username: String): SupabaseAuthResult {
         val cleanEmail = email.trim()
-        val cleanFieldName = fieldName.trim()
-        if (cleanEmail.isEmpty() || cleanFieldName.isEmpty() || password.isEmpty()) {
+        val cleanUsername = username.trim()
+        if (cleanEmail.isEmpty() || cleanUsername.isEmpty() || password.isEmpty()) {
             return SupabaseAuthResult.Failure("Please enter email, username, and password")
         }
 
         val existingEmail = resolveExistingLogin(cleanEmail)
-        val existingUsername = resolveExistingLogin(cleanFieldName)
+        val existingUsername = resolveExistingLogin(cleanUsername)
         if (existingEmail != null || existingUsername != null) {
             return SupabaseAuthResult.Failure("Username or email already exists")
         }
@@ -55,7 +55,7 @@ class SupabaseAuthRepository(
             gateway.signUp(
                 email = cleanEmail,
                 password = password,
-                metadata = metadataFor(cleanFieldName)
+                metadata = metadataFor(cleanUsername)
             )
         }
     }
@@ -111,14 +111,11 @@ class SupabaseAuthRepository(
         }
     }
 
-    private fun metadataFor(fieldName: String): Map<String, String> {
-        return if (fieldName.isEmpty()) {
+    private fun metadataFor(username: String): Map<String, String> {
+        return if (username.isEmpty()) {
             emptyMap()
         } else {
-            mapOf(
-                "field_name" to fieldName,
-                "username" to fieldName
-            )
+            mapOf("username" to username)
         }
     }
 

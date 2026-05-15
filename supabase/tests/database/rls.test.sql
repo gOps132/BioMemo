@@ -22,7 +22,7 @@ insert into auth.users (
   crypt('password', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  '{"field_name":"Alpha Scout","username":"alpha"}'::jsonb,
+  '{"username":"alpha"}'::jsonb,
   now(),
   now()
 ),
@@ -34,7 +34,7 @@ insert into auth.users (
   crypt('password', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  '{"field_name":"Beta Scout","username":"beta"}'::jsonb,
+  '{"username":"beta"}'::jsonb,
   now(),
   now()
 );
