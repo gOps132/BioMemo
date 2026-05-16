@@ -1,6 +1,7 @@
 package com.example.biomemo
 
 import com.example.biomemo.data.BioRecordGateway
+import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRecordRow
 import com.example.biomemo.data.BioRecordPhotoUpload
@@ -76,7 +77,8 @@ class BioRepositoryTest {
         assertEquals("Duttaphrynus melanostictus", entry?.scientificName)
         assertEquals(82, entry?.confidence)
         assertEquals("Gemini image identification", entry?.sourceApi)
-        assertTrue(entry?.notes?.contains("AI reasoning: Warty skin") == true)
+        assertTrue(entry?.notes?.contains("Warty skin") == true)
+        assertTrue(entry?.notes?.contains("AI reasoning:") == false)
     }
 
     @Test
@@ -194,6 +196,25 @@ class BioRepositoryTest {
     }
 
     @Test
+    fun refreshAllEntriesBypassesCachedCollection() = runBlocking {
+        BioRecordChangeTracker.resetForTests()
+        val rows = mutableListOf(sampleRow(id = "record-before-refresh"))
+        val repository = BioRepository(FakeBioRecordGateway(rows))
+
+        assertEquals(listOf("record-before-refresh"), repository.getAllEntries().map { it.id })
+
+        rows += sampleRow(id = "record-after-refresh", locationLabel = "Fresh Site")
+
+        assertEquals(listOf("record-before-refresh"), repository.getAllEntries().map { it.id })
+        val versionBeforeRefresh = BioRecordChangeTracker.currentVersion()
+        assertEquals(
+            listOf("record-before-refresh", "record-after-refresh"),
+            repository.refreshAllEntries().map { it.id }
+        )
+        assertTrue(BioRecordChangeTracker.currentVersion() > versionBeforeRefresh)
+    }
+
+    @Test
     fun createDraftUploadRecordStoresPhotoUnderPrivateUserPathBeforeInsert() = runBlocking {
         val gateway = FakeBioRecordGateway(emptyList(), userId = "user-123")
         val repository = BioRepository(gateway, recordIdProvider = { "record-abc" })
@@ -297,6 +318,7 @@ class BioRepositoryTest {
 
     @Test
     fun deleteEntriesDelegatesAndClearsCachedRecords() = runBlocking {
+        BioRecordChangeTracker.resetForTests()
         val gateway = FakeBioRecordGateway(
             listOf(
                 sampleRow(id = "keep-record"),
@@ -306,11 +328,13 @@ class BioRepositoryTest {
         val repository = BioRepository(gateway)
 
         assertEquals(2, repository.getAllEntries().size)
+        val versionBeforeDelete = BioRecordChangeTracker.currentVersion()
         val deletedCount = repository.deleteEntries(listOf("delete-record", "delete-record", " "))
 
         assertEquals(1, deletedCount)
         assertEquals(listOf("delete-record"), gateway.deletedIds)
         assertEquals(listOf("keep-record"), repository.getAllEntries().map { it.id })
+        assertTrue(BioRecordChangeTracker.currentVersion() > versionBeforeDelete)
     }
 
     private fun sampleRow(

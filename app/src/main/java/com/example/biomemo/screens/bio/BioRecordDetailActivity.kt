@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,16 +43,17 @@ class BioRecordDetailActivity : AppCompatActivity() {
             }
 
             val username = currentUsername()
-            renderEntry(entry, username)
-            if (entry.taxonomy == "Not enriched yet" && entry.scientificName != "Awaiting identification") {
+            val shouldEnrich = entry.taxonomy == NOT_ENRICHED && entry.scientificName != AWAITING_IDENTIFICATION
+            renderEntry(entry, username, isEnriching = shouldEnrich)
+            if (shouldEnrich) {
                 repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
                     renderEntry(enrichedEntry, username)
-                }
+                } ?: renderEntry(entry, username)
             }
         }
     }
 
-    private fun renderEntry(entry: BioEntry, username: String) {
+    private fun renderEntry(entry: BioEntry, username: String, isEnriching: Boolean = false) {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
         heroImage.contentDescription = "${entry.commonName} photo"
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
@@ -86,7 +88,8 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 "Conservation status" to entry.conservationStatus,
                 "Source API" to entry.sourceApi,
                 "Last enriched" to entry.lastEnrichedDate
-            )
+            ),
+            loadingLabels = if (isEnriching) ENRICHMENT_LOADING_LABELS else emptySet()
         )
 
         renderTags(entry.tags.filterNot { it == entry.verificationStatus })
@@ -120,7 +123,12 @@ class BioRecordDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderRows(containerId: Int, title: String, rows: List<Pair<String, String>>) {
+    private fun renderRows(
+        containerId: Int,
+        title: String,
+        rows: List<Pair<String, String>>,
+        loadingLabels: Set<String> = emptySet()
+    ) {
         val container = findViewById<LinearLayout>(containerId)
         container.removeAllViews()
         container.addView(text(title, 18, R.color.bio_ink, true))
@@ -128,7 +136,19 @@ class BioRecordDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            container.addView(text(value, 15, R.color.bio_ink, false))
+            if (label in loadingLabels && value == NOT_ENRICHED) {
+                container.addView(loadingValue())
+            } else {
+                container.addView(text(value, 15, R.color.bio_ink, false))
+            }
+        }
+    }
+
+    private fun loadingValue(): ProgressBar {
+        return ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            isIndeterminate = true
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
+            contentDescription = "Loading enrichment"
         }
     }
 
@@ -176,5 +196,16 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_ENTRY_ID = "bio_record_id"
+        private const val NOT_ENRICHED = "Not enriched yet"
+        private const val AWAITING_IDENTIFICATION = "Awaiting identification"
+        private val ENRICHMENT_LOADING_LABELS = setOf(
+            "Taxonomy",
+            "Habitat",
+            "Diet",
+            "Lifespan",
+            "Distribution",
+            "Conservation status",
+            "Last enriched"
+        )
     }
 }

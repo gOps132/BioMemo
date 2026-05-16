@@ -174,6 +174,11 @@ class BioRepository(
             .also { cache.entries = it }
     }
 
+    suspend fun refreshAllEntries(): List<BioEntry> {
+        invalidateRecords(includeLookups = true)
+        return getAllEntries().also { BioRecordChangeTracker.markChanged() }
+    }
+
     suspend fun getRecentEntries(limit: Int = 2): List<BioEntry> {
         val rows = fetchBioRecords(limit)
         if (rows.isEmpty()) return emptyList()
@@ -243,6 +248,7 @@ class BioRepository(
         cache.bioRecords = cache.bioRecords?.filterNot { it.id in distinctIds }
         cache.identificationCandidates = cache.identificationCandidates?.filterNot { it.bioRecordId in distinctIds }
         cache.entries = cache.entries?.filterNot { it.id in distinctIds }
+        BioRecordChangeTracker.markChanged()
         return distinctIds.size
     }
 
@@ -282,6 +288,7 @@ class BioRepository(
         val bestCandidate = candidates.bestCandidate()
         val speciesProfile = enrichCandidate(recordId, bestCandidate)
         return insertedRow.toBioEntry(bestCandidate, speciesProfile)
+            .also { BioRecordChangeTracker.markChanged() }
     }
 
     suspend fun enrichBioRecordSpecies(recordId: String): BioEntry? {
@@ -298,7 +305,9 @@ class BioRepository(
             .bestCandidate()
             ?: return row.toBioEntry(null, null)
         val profile = enrichCandidate(recordId, candidate)
-        return row.copy(speciesProfileId = profile?.id ?: row.speciesProfileId).toBioEntry(candidate, profile)
+        return row.copy(speciesProfileId = profile?.id ?: row.speciesProfileId)
+            .toBioEntry(candidate, profile)
+            .also { if (profile != null) BioRecordChangeTracker.markChanged() }
     }
 
     suspend fun createSignedPhotoUrl(path: String): String {
@@ -400,9 +409,13 @@ class BioRepository(
             ?: gateway.fetchSpeciesProfiles().also { cache.speciesProfiles = it }
     }
 
-    private fun invalidateRecords() {
+    private fun invalidateRecords(includeLookups: Boolean = false) {
         cache.bioRecords = null
         cache.entries = null
+        if (includeLookups) {
+            cache.identificationCandidates = null
+            cache.speciesProfiles = null
+        }
     }
 
     private fun BioRecordRow.toBioEntry(candidate: IdentificationCandidateRow? = null, speciesProfile: SpeciesProfileRow? = null): BioEntry {
@@ -420,7 +433,7 @@ class BioRepository(
         val confidenceLabel = candidate?.confidenceScore ?: confidenceScore ?: 0
         val notesLabel = listOfNotNull(
             notes?.takeIf { it.isNotBlank() },
-            candidate?.reasoning?.takeIf { it.isNotBlank() }?.let { "AI reasoning: $it" },
+            candidate?.reasoning?.takeIf { it.isNotBlank() },
             candidate?.visibleTraits?.takeIf { it.isNotBlank() }?.let { "Visible traits: $it" },
             candidate?.uncertaintyNotes?.takeIf { it.isNotBlank() }?.let { "Uncertainty: $it" }
         ).joinToString("\n\n").ifBlank { "No field notes yet." }

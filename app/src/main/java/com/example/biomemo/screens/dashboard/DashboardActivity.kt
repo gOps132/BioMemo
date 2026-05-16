@@ -12,6 +12,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
+import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.BioStats
 import com.example.biomemo.navigation.MainBottomNav
@@ -30,6 +31,8 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private var currentUsername: String = ""
     private val bioRepository = BioRepository()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
+    private var isLoadingBioRecords = false
+    private var observedBioRecordVersion = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +44,19 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         presenter.start(currentUsername)
         MainBottomNav.setup(this, MainNavDestination.HOME, currentUsername)
 
+        loadDashboardData()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
+            loadDashboardData()
+        }
+    }
+
+    private fun loadDashboardData() {
+        if (isLoadingBioRecords) return
+        isLoadingBioRecords = true
         bioScope.launch {
             val (stats, recentEntries) = runCatching {
                 withContext(Dispatchers.IO) {
@@ -53,6 +69,8 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
             findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
             renderRecentBioRecords(recentEntries)
+            observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
+            isLoadingBioRecords = false
         }
     }
 

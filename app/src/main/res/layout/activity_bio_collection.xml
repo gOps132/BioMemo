@@ -4,7 +4,18 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_app_surface">
 
+    <ProgressBar
+        android:id="@+id/progressBioCollectionRefresh"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="16dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
     <ScrollView
+        android:id="@+id/scrollviewBioCollection"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"

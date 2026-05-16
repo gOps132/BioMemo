@@ -16,6 +16,7 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
+import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
@@ -41,6 +42,7 @@ class SearchActivity : AppCompatActivity() {
     private val searchScope = CoroutineScope(Dispatchers.Main + Job())
     private var searchJob: Job? = null
     private lateinit var searchField: EditText
+    private var observedBioRecordVersion = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,10 +61,18 @@ class SearchActivity : AppCompatActivity() {
         runSearch("")
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::searchField.isInitialized && observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
+            runSearch(searchField.text?.toString().orEmpty())
+        }
+    }
+
     private fun runSearch(query: String) {
         searchJob?.cancel()
         searchJob = searchScope.launch {
             renderState(presenter.search(query))
+            observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
         }
     }
 

@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
@@ -29,7 +30,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.textviewSpeciesReferenceBack).setOnClickListener { finish() }
         val species = readSpeciesFromIntent()
-        renderDetail(species.toSpeciesReferenceDetail())
+        renderDetail(species.toSpeciesReferenceDetail(), isEnriching = true)
         loadEnrichment(species)
     }
 
@@ -38,6 +39,8 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             val enrichment = runCatching { speciesRepository.previewEnrichment(species) }.getOrNull()
             if (enrichment != null) {
                 renderDetail(species.toSpeciesReferenceDetail(enrichment))
+            } else {
+                renderDetail(species.toSpeciesReferenceDetail())
             }
         }
     }
@@ -59,7 +62,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun renderDetail(detail: SpeciesReferenceDetail) {
+    private fun renderDetail(detail: SpeciesReferenceDetail, isEnriching: Boolean = false) {
         findViewById<TextView>(R.id.textviewSpeciesReferenceTitle).text = detail.title
         findViewById<TextView>(R.id.textviewSpeciesReferenceSubtitle).text = detail.subtitle
         findViewById<TextView>(R.id.textviewSpeciesReferenceHeroMeta).text = "Public species reference · read-only"
@@ -71,7 +74,19 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            container.addView(text(value, 15, R.color.bio_ink, false))
+            if (isEnriching && label in ENRICHMENT_LOADING_LABELS && value == NOT_ENRICHED) {
+                container.addView(loadingValue())
+            } else {
+                container.addView(text(value, 15, R.color.bio_ink, false))
+            }
+        }
+    }
+
+    private fun loadingValue(): ProgressBar {
+        return ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            isIndeterminate = true
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
+            contentDescription = "Loading enrichment"
         }
     }
 
@@ -133,5 +148,15 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
         const val EXTRA_ORDER = "order"
         const val EXTRA_FAMILY = "family"
         const val EXTRA_GENUS = "genus"
+        private const val NOT_ENRICHED = "Not enriched yet"
+        private val ENRICHMENT_LOADING_LABELS = setOf(
+            "Habitat",
+            "Diet",
+            "Lifespan",
+            "Distribution",
+            "Conservation status",
+            "Photo source",
+            "Last enriched"
+        )
     }
 }
