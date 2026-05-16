@@ -50,6 +50,13 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_DEV_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
             buildConfigField("boolean", "LOCAL_SUPABASE", "${localProperties.containsKey("SUPABASE_DEV_URL") && localProperties.containsKey("SUPABASE_DEV_ANON_KEY")}")
         }
+        create("prodDebug") {
+            initWith(getByName("debug"))
+            matchingFallbacks += listOf("debug")
+            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
+            buildConfigField("boolean", "LOCAL_SUPABASE", "false")
+        }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")

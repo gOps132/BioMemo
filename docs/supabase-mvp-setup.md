@@ -22,8 +22,9 @@ Do not commit real values.
 
 Debug builds use `SUPABASE_URL` and `SUPABASE_ANON_KEY` so Google OAuth returns through
 the production Supabase callback instead of the local `127.0.0.1:54321` auth callback.
-Release builds use `SUPABASE_PROD_URL` and `SUPABASE_PROD_ANON_KEY` when present, then
-fall back to the same `SUPABASE_URL` and `SUPABASE_ANON_KEY` values.
+`prodDebug` and release builds use `SUPABASE_PROD_URL` and `SUPABASE_PROD_ANON_KEY`
+when present, then fall back to the same `SUPABASE_URL` and `SUPABASE_ANON_KEY` values.
+Use `prodDebug` in Android Studio when you want a debuggable build that points at prod.
 
 ## Enable Google OAuth
 
