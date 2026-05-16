@@ -97,6 +97,34 @@ class BioRepositoryTest {
     }
 
     @Test
+    fun observeEntryByIdKeepsGeneratedCandidateNotes() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-candidate")),
+                observedRows = listOf(sampleRow(id = "record-with-candidate")),
+                identificationCandidates = listOf(
+                    IdentificationCandidateRow(
+                        bioRecordId = "record-with-candidate",
+                        commonName = "Asian common toad",
+                        scientificName = "Duttaphrynus melanostictus",
+                        confidenceScore = 82,
+                        reasoning = "Warty skin and parotoid glands are visible.",
+                        visibleTraits = "Brown warty skin; stout body",
+                        uncertaintyNotes = "Photo angle hides feet.",
+                        selected = true
+                    )
+                )
+            )
+        )
+
+        val entry = repository.observeEntryById("record-with-candidate").take(1).toList().single()
+
+        assertEquals("Asian common toad", entry.commonName)
+        assertTrue(entry.notes.contains("Warty skin"))
+        assertTrue(!entry.notes.contains("No field notes yet."))
+    }
+
+    @Test
     fun searchMatchesMappedRecordFields() = runBlocking {
         val repository = BioRepository(FakeBioRecordGateway(listOf(sampleRow(locationLabel = "Fern Ridge"))))
 

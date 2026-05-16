@@ -215,7 +215,7 @@ class BioRepository(
     fun observeEntryById(id: String): Flow<BioEntry> {
         return kotlinx.coroutines.flow.flow {
             gateway.observeBioRecord(id).collect { row ->
-                emit(row.toBioEntry())
+                emit(row.toBioEntryWithLookups())
             }
         }
     }
@@ -436,6 +436,16 @@ class BioRepository(
     private suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
         return cache.speciesProfiles
             ?: gateway.fetchSpeciesProfiles().also { cache.speciesProfiles = it }
+    }
+
+    private suspend fun BioRecordRow.toBioEntryWithLookups(): BioEntry {
+        val candidate = fetchIdentificationCandidates()
+            .filter { it.bioRecordId == id }
+            .bestCandidate()
+        val profile = speciesProfile ?: speciesProfileId?.let { profileId ->
+            fetchSpeciesProfiles().firstOrNull { it.id == profileId }
+        }
+        return toBioEntry(candidate, profile)
     }
 
     private fun invalidateRecords(includeLookups: Boolean = false) {
