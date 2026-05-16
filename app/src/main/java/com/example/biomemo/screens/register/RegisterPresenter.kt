@@ -16,6 +16,11 @@ class RegisterPresenter(
             return
         }
 
+        if (!cleanEmail.isValidEmail()) {
+            view.showError("Invalid email address.")
+            return
+        }
+
         if (pass.length < 6) {
             view.showError("Password must be at least 6 characters.")
             return
@@ -40,5 +45,9 @@ class RegisterPresenter(
             is SupabaseAuthResult.Success -> view.showSuccess("Continue in your browser to finish Google sign-in.")
             is SupabaseAuthResult.Failure -> view.showError(result.message)
         }
+    }
+
+    private fun String.isValidEmail(): Boolean {
+        return matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
     }
 }

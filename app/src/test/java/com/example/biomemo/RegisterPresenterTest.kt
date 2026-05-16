@@ -77,6 +77,23 @@ class RegisterPresenterTest {
     }
 
     @Test
+    fun invalidEmailShowsEmailValidationError() = runBlocking {
+        val view = FakeRegisterView()
+        val model = FakeRegisterModel()
+        val presenter = RegisterPresenter(view, model)
+
+        presenter.onRegisterClicked(
+            email = "not-an-email",
+            username = "fieldnotes",
+            pass = "secret123",
+            rePass = "secret123"
+        )
+
+        assertEquals("Invalid email address.", view.errorMessage)
+        assertTrue(!model.registerCalled)
+    }
+
+    @Test
     fun googleSignInLaunchesSupabaseOAuth() = runBlocking {
         val view = FakeRegisterView()
         val presenter = RegisterPresenter(view, FakeRegisterModel())

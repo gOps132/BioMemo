@@ -137,6 +137,25 @@ class SupabaseAuthRepositoryTest {
     }
 
     @Test
+    fun invalidEmailExceptionReturnsEmailValidationMessage() = runBlocking {
+        val gateway = FakeAuthGateway(
+            failure = IllegalStateException(
+                "invalid_email (Unable to validate email address: invalid format) " +
+                    "URL: https://example.supabase.co/auth/v1/signup Headers: [Authorization=[Bearer secret]]"
+            )
+        )
+        val repository = SupabaseAuthRepository(gateway)
+
+        val result = repository.signUp("not-an-email", "secret123", "trail")
+
+        assertTrue(result is SupabaseAuthResult.Failure)
+        val message = (result as SupabaseAuthResult.Failure).message
+        assertEquals("Invalid email address.", message)
+        assertFalse(message.contains("URL:"))
+        assertFalse(message.contains("Authorization"))
+    }
+
+    @Test
     fun sessionHelpersDelegateToGateway() {
         val gateway = FakeAuthGateway(
             activeSession = true,
