@@ -1,8 +1,9 @@
 package com.example.biomemo.screens.bio
 
-import android.graphics.BitmapFactory
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -15,14 +16,15 @@ import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.remote.ProfileResult
 import com.example.biomemo.data.remote.SupabaseProfileRepository
+import com.example.biomemo.screens.map.BioMapActivity
+import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.applyRoundedCorners
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URL
 
 class BioRecordDetailActivity : AppCompatActivity() {
     private val repository = BioRepository()
@@ -62,6 +64,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
     private fun renderEntry(entry: BioEntry, username: String) {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
+        heroImage.applyRoundedCorners(dp(14).toFloat())
         heroImage.contentDescription = "${entry.commonName} photo"
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
         findViewById<TextView>(R.id.textviewBioRecordScientificName).text = entry.scientificName
@@ -69,6 +72,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
             "${entry.category} · ${entry.confidence}% match"
         findViewById<TextView>(R.id.textviewBioRecordNotes).text = entry.notes
         loadHeroPhoto(entry, heroImage)
+        setupShowInMap(entry)
 
         renderRows(
             R.id.linearlayoutObservationDetails,
@@ -112,20 +116,28 @@ class BioRecordDetailActivity : AppCompatActivity() {
     private fun loadHeroPhoto(entry: BioEntry, imageView: ImageView) {
         if (entry.photoUrl.isBlank()) return
         bioScope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                runCatching {
-                    val url = if (entry.photoUrl.startsWith("http")) {
-                        entry.photoUrl
-                    } else {
-                        repository.createSignedPhotoUrl(entry.photoUrl)
-                    }
-                    URL(url).openStream().use(BitmapFactory::decodeStream)
-                }.getOrNull()
-            }
+            val bitmap = BioImageLoader.loadBitmap(
+                photoRef = entry.photoUrl,
+                targetWidthPx = resources.displayMetrics.widthPixels,
+                targetHeightPx = dp(320),
+                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+            )
             if (bitmap != null) {
                 imageView.setPadding(0, 0, 0, 0)
                 imageView.scaleType = ImageView.ScaleType.CENTER_CROP
                 imageView.setImageBitmap(bitmap)
+            }
+        }
+    }
+
+    private fun setupShowInMap(entry: BioEntry) {
+        findViewById<TextView>(R.id.textviewBioRecordShowInMap).apply {
+            visibility = if (hasValidCoordinates(entry.latitude, entry.longitude)) View.VISIBLE else View.GONE
+            setOnClickListener {
+                startActivity(
+                    Intent(this@BioRecordDetailActivity, BioMapActivity::class.java)
+                        .putExtra(BioMapActivity.EXTRA_FOCUS_ENTRY_ID, entry.id)
+                )
             }
         }
     }
@@ -188,6 +200,18 @@ class BioRecordDetailActivity : AppCompatActivity() {
         } else {
             "%.4f, %.4f".format(latitude, longitude)
         }
+    }
+
+    private fun hasValidCoordinates(latitude: Double?, longitude: Double?): Boolean {
+        return latitude != null &&
+            longitude != null &&
+            !latitude.isNaN() &&
+            !longitude.isNaN() &&
+            !latitude.isInfinite() &&
+            !longitude.isInfinite() &&
+            latitude in -90.0..90.0 &&
+            longitude in -180.0..180.0 &&
+            !(latitude == 0.0 && longitude == 0.0)
     }
 
     private fun text(value: String, sizeSp: Int, colorRes: Int, bold: Boolean): TextView {

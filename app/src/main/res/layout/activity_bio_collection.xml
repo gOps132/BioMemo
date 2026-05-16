@@ -14,17 +14,16 @@
         android:indeterminate="true"
         android:visibility="gone" />
 
-    <ScrollView
-        android:id="@+id/scrollviewBioCollection"
+    <LinearLayout
+        android:id="@+id/layoutBioCollectionContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:fillViewport="true"
+        android:orientation="vertical"
         android:paddingBottom="104dp">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="vertical">
 
             <LinearLayout
@@ -66,14 +65,30 @@
                 android:paddingRight="20dp"
                 android:paddingBottom="6dp" />
 
-            <LinearLayout
-                android:id="@+id/linearlayoutBioEntries"
+            <TextView
+                android:id="@+id/textviewBioCollectionEmpty"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp" />
+                android:paddingLeft="20dp"
+                android:paddingTop="20dp"
+                android:paddingRight="20dp"
+                android:text="No BioRecords yet. Add your first observation from the capture tab."
+                android:textColor="@color/bio_ink_muted"
+                android:textSize="15sp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerviewBioEntries"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingLeft="20dp"
+                android:paddingTop="14dp"
+                android:paddingRight="20dp"
+                android:paddingBottom="20dp" />
         </LinearLayout>
-    </ScrollView>
+    </LinearLayout>
 
     <include
         android:layout_width="match_parent"

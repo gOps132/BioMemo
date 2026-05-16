@@ -69,7 +69,7 @@ class BioRepositoryTest {
         assertEquals("30 to 60 years.", entry.lifespan)
         assertEquals("Philippines.", entry.distribution)
         assertEquals("critically endangered", entry.conservationStatus)
-        assertEquals("Gemini image identification", entry.sourceApi)
+        assertEquals("OpenAI image identification", entry.sourceApi)
         assertEquals("May 6, 2026", entry.lastEnrichedDate)
     }
 
@@ -130,7 +130,7 @@ class BioRepositoryTest {
         assertEquals("Asian common toad", entry?.commonName)
         assertEquals("Duttaphrynus melanostictus", entry?.scientificName)
         assertEquals(82, entry?.confidence)
-        assertEquals("Gemini image identification", entry?.sourceApi)
+        assertEquals("OpenAI image identification", entry?.sourceApi)
         assertTrue(entry?.notes?.contains("Warty skin") == true)
         assertTrue(entry?.notes?.contains("AI reasoning:") == false)
     }
@@ -428,7 +428,7 @@ class BioRepositoryTest {
             lifespan = "30 to 60 years.",
             distribution = "Philippines.",
             conservationStatus = "critically endangered",
-            sourceApi = "Gemini image identification",
+            sourceApi = "OpenAI image identification",
             lastEnrichedAt = "2026-05-06T09:45:00Z"
         )
     }

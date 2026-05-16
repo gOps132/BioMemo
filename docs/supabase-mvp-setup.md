@@ -15,7 +15,6 @@ sign in -> capture/upload photo -> create draft BioRecord -> identify -> confirm
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 GOOGLE_WEB_CLIENT_ID=
-AI_IDENTIFICATION_API_KEY=
 ```
 
 Do not commit real values.
@@ -25,6 +24,19 @@ the production Supabase callback instead of the local `127.0.0.1:54321` auth cal
 `prodDebug` and release builds use `SUPABASE_PROD_URL` and `SUPABASE_PROD_ANON_KEY`
 when present, then fall back to the same `SUPABASE_URL` and `SUPABASE_ANON_KEY` values.
 Use `prodDebug` in Android Studio when you want a debuggable build that points at prod.
+
+BioRecord image identification runs in the Supabase Edge Function, not in the Android app.
+Configure the OpenAI key as a Supabase secret:
+
+```bash
+supabase secrets set OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+```
+
+Optionally override the model:
+
+```bash
+supabase secrets set OPENAI_IDENTIFICATION_MODEL=gpt-4.1-mini
+```
 
 ## Enable Google OAuth
 

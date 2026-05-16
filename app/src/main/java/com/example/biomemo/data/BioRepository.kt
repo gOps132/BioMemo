@@ -494,7 +494,7 @@ class BioRepository(
             distribution = species?.distribution.presentOrNull() ?: NOT_ENRICHED,
             conservationStatus = species?.conservationStatus.presentOrNull() ?: NOT_ENRICHED,
             sourceApi = species?.sourceApi.presentOrNull()
-                ?: if (candidate == null) "Pending identification" else "Gemini image identification",
+                ?: if (candidate == null) "Pending identification" else "OpenAI image identification",
             lastEnrichedDate = species?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
         )
     }

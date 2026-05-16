@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioRecordPhotoUpload
+import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
 import kotlinx.coroutines.CoroutineScope
@@ -32,10 +33,20 @@ class BioRecordCaptureFlow(
     private val repository: BioRepository = BioRepository()
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private val locationProvider = BioRecordCurrentLocationProvider(activity)
     private var processingDialog: Dialog? = null
+    private var pendingLocationAction: (() -> Unit)? = null
 
     private val uploadPhotoPicker = activity.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { processUpload(it) }
+    }
+
+    private val locationPermissionLauncher = activity.registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        val action = pendingLocationAction
+        pendingLocationAction = null
+        action?.invoke()
     }
 
     private val cameraPreview = activity.registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
@@ -43,11 +54,11 @@ class BioRecordCaptureFlow(
     }
 
     fun openUploadPicker() {
-        uploadPhotoPicker.launch("image/*")
+        withLocationPermission { uploadPhotoPicker.launch("image/*") }
     }
 
     fun openCamera() {
-        cameraPreview.launch(null)
+        withLocationPermission { cameraPreview.launch(null) }
     }
 
     fun dispose() {
@@ -69,7 +80,9 @@ class BioRecordCaptureFlow(
                     BioRecordPhotoUpload(
                         bytes = bytes,
                         contentType = contentType,
-                        metadata = BioRecordPhotoMetadataExtractor.fromBytes(bytes, contentType)
+                        metadata = withDeviceLocationFallback(
+                            BioRecordPhotoMetadataExtractor.fromBytes(bytes, contentType)
+                        )
                     )
                 )
             }
@@ -95,7 +108,9 @@ class BioRecordCaptureFlow(
                     BioRecordPhotoUpload(
                         bytes = bytes,
                         contentType = contentType,
-                        metadata = BioRecordPhotoMetadataExtractor.fromBitmap(bitmap, contentType)
+                        metadata = withDeviceLocationFallback(
+                            BioRecordPhotoMetadataExtractor.fromBitmap(bitmap, contentType)
+                        )
                     )
                 )
             }
@@ -166,6 +181,22 @@ class BioRecordCaptureFlow(
 
     private fun showFailure(message: String) {
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun withLocationPermission(action: () -> Unit) {
+        if (BioRecordCurrentLocationProvider.hasLocationPermission(activity)) {
+            action()
+        } else {
+            pendingLocationAction = action
+            locationPermissionLauncher.launch(BioRecordCurrentLocationProvider.LOCATION_PERMISSIONS)
+        }
+    }
+
+    private suspend fun withDeviceLocationFallback(metadata: BioRecordPhotoMetadata): BioRecordPhotoMetadata {
+        return BioRecordLocationMetadataMerger.withFallbackLocation(
+            metadata = metadata,
+            location = locationProvider.currentLocation()
+        )
     }
 
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()

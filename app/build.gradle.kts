@@ -36,7 +36,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperty("GOOGLE_WEB_CLIENT_ID")}\"")
-        buildConfigField("String", "AI_IDENTIFICATION_API_KEY", "\"${localProperty("AI_IDENTIFICATION_API_KEY")}\"")
         buildConfigField("boolean", "LOCAL_SUPABASE", "false")
     }
 
@@ -80,6 +79,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.recyclerview)
     implementation(libs.osmdroid.android)
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)

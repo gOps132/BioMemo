@@ -1,7 +1,6 @@
 package com.example.biomemo.screens.bio
 
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.Gravity
@@ -12,24 +11,27 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.screens.map.BioMapActivity
+import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.roundedImageView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.URL
 
 class BioCollectionActivity : AppCompatActivity() {
     private val repository = BioRepository()
@@ -38,18 +40,28 @@ class BioCollectionActivity : AppCompatActivity() {
     private var sortMode: BioCollectionSort = BioCollectionSort.NEWEST
     private val selectedEntryIds = linkedSetOf<String>()
     private lateinit var refreshProgress: ProgressBar
-    private lateinit var collectionScroll: ScrollView
+    private lateinit var entriesList: RecyclerView
+    private lateinit var emptyText: TextView
+    private lateinit var entriesAdapter: BioEntryAdapter
     private var pullStartY: Float? = null
     private var isRefreshing = false
     private var observedBioRecordVersion = -1L
+    private var navUsername: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bio_collection)
 
-        MainBottomNav.setup(this, MainNavDestination.RECORDS, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
+        navUsername = intent.getStringExtra(MainBottomNav.EXTRA_USERNAME)
+        MainBottomNav.setup(this, MainNavDestination.RECORDS, navUsername)
         refreshProgress = findViewById(R.id.progressBioCollectionRefresh)
-        collectionScroll = findViewById(R.id.scrollviewBioCollection)
+        emptyText = findViewById(R.id.textviewBioCollectionEmpty)
+        entriesAdapter = BioEntryAdapter()
+        entriesList = findViewById<RecyclerView>(R.id.recyclerviewBioEntries).apply {
+            layoutManager = LinearLayoutManager(this@BioCollectionActivity)
+            adapter = entriesAdapter
+            setHasFixedSize(false)
+        }
         setupPullRefresh()
 
         loadEntries(forceRefresh = false)
@@ -63,15 +75,15 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun setupPullRefresh() {
-        collectionScroll.setOnTouchListener { _, event ->
+        entriesList.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    pullStartY = event.y.takeIf { collectionScroll.scrollY == 0 && !isRefreshing }
+                    pullStartY = event.y.takeIf { !entriesList.canScrollVertically(-1) && !isRefreshing }
                     false
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val startY = pullStartY ?: return@setOnTouchListener false
-                    if (collectionScroll.scrollY == 0 && event.y - startY > dp(PULL_REFRESH_DISTANCE_DP).toFloat()) {
+                    if (!entriesList.canScrollVertically(-1) && event.y - startY > dp(PULL_REFRESH_DISTANCE_DP).toFloat()) {
                         pullStartY = null
                         loadEntries(forceRefresh = true)
                         true
@@ -113,14 +125,10 @@ class BioCollectionActivity : AppCompatActivity() {
 
     private fun renderCollection() {
         renderActions()
-        val container = findViewById<LinearLayout>(R.id.linearlayoutBioEntries)
-        container.removeAllViews()
         val sortedEntries = entries.sortedByMode(sortMode)
-        if (sortedEntries.isEmpty()) {
-            container.addView(text("No BioRecords yet. Add your first observation from the capture tab.", 15, R.color.bio_ink_muted, false))
-            return
-        }
-        sortedEntries.forEach { entry -> container.addView(createEntryCard(entry)) }
+        emptyText.visibility = if (sortedEntries.isEmpty()) View.VISIBLE else View.GONE
+        entriesList.visibility = if (sortedEntries.isEmpty()) View.GONE else View.VISIBLE
+        entriesAdapter.submitEntries(sortedEntries)
     }
 
     private fun renderActions() {
@@ -145,6 +153,9 @@ class BioCollectionActivity : AppCompatActivity() {
             ).apply { bottomMargin = dp(10) }
             addView(LinearLayout(this@BioCollectionActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
+                addView(button("BioMap", R.drawable.bg_chip, R.color.bio_forest_900).apply {
+                    setOnClickListener { openBioMap() }
+                })
                 BioCollectionSort.entries.forEach { mode ->
                     addView(button(mode.label, mode.background(sortMode), mode.textColor(sortMode)).apply {
                         setOnClickListener {
@@ -191,55 +202,77 @@ class BioCollectionActivity : AppCompatActivity() {
         }
     }
 
-    private fun createEntryCard(entry: BioEntry): LinearLayout {
-        val isSelected = entry.id in selectedEntryIds
-        val card = LinearLayout(this).apply {
+    private fun createEntryCard(): LinearLayout {
+        return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundResource(if (isSelected) R.drawable.bg_card_selected else R.drawable.bg_card_elevated)
             isClickable = true
             isFocusable = true
             setPadding(dp(18), dp(16), dp(18), dp(16))
-            layoutParams = LinearLayout.LayoutParams(
+            layoutParams = RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = dp(12) }
-            setOnClickListener {
-                if (selectedEntryIds.isEmpty()) {
-                    openBioRecord(entry)
-                } else {
-                    toggleSelection(entry)
-                }
-            }
-            setOnLongClickListener {
+        }
+    }
+
+    private fun populateEntryCard(card: LinearLayout, holder: BioEntryViewHolder, entry: BioEntry) {
+        val isSelected = entry.id in selectedEntryIds
+        card.setBackgroundResource(if (isSelected) R.drawable.bg_card_selected else R.drawable.bg_card_elevated)
+        card.setOnClickListener {
+            if (selectedEntryIds.isEmpty()) {
+                openBioRecord(entry)
+            } else {
                 toggleSelection(entry)
-                true
             }
         }
+        card.setOnLongClickListener {
+            toggleSelection(entry)
+            true
+        }
+        holder.thumbnail.contentDescription = "${entry.commonName} thumbnail"
+        holder.thumbnail.tag = entry.photoUrl
+        holder.thumbnail.setImageResource(R.drawable.ic_bio_record_photo)
+        holder.thumbnail.setPadding(0, 0, 0, 0)
+        holder.thumbnail.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        loadThumbnail(entry, holder.thumbnail)
+        holder.commonName.text = entry.commonName
+        holder.scientificName.text = entry.scientificName
+        holder.category.text = "${entry.category} · ${entry.confidence}% match"
+        holder.location.text = "${entry.date} · ${entry.location}"
+        holder.tags.text = entry.tags.joinToString(" · ")
+        holder.notes.text = entry.notes.previewText()
+    }
 
-        val thumbnail = thumbnail(entry)
-        card.addView(thumbnail)
-        loadThumbnail(entry, thumbnail)
-        card.addView(LinearLayout(this@BioCollectionActivity).apply {
+    private fun createEntryViewHolder(): BioEntryViewHolder {
+        val card = createEntryCard()
+        val thumbnail = thumbnail().also(card::addView)
+        val commonName = text("", 18, R.color.bio_ink, true)
+        val scientificName = text("", 13, R.color.bio_ink_muted, false)
+        val category = text("", 13, R.color.bio_forest_600, true)
+        val location = text("", 13, R.color.bio_ink_muted, false)
+        val tags = text("", 12, R.color.bio_forest_700, true).apply {
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        val notes = text("", 14, R.color.bio_ink, false).apply {
+            maxLines = 3
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 1f
             )
-            addView(text(entry.commonName, 18, R.color.bio_ink, true))
-            addView(text(entry.scientificName, 13, R.color.bio_ink_muted, false))
-            addView(text("${entry.category} · ${entry.confidence}% match", 13, R.color.bio_forest_600, true))
-            addView(text("${entry.date} · ${entry.location}", 13, R.color.bio_ink_muted, false))
-            addView(text(entry.tags.joinToString(" · "), 12, R.color.bio_forest_700, true).apply {
-                maxLines = 1
-                ellipsize = TextUtils.TruncateAt.END
-            })
-            addView(text(entry.notes.previewText(), 14, R.color.bio_ink, false).apply {
-                maxLines = 3
-                ellipsize = TextUtils.TruncateAt.END
-            })
+            addView(commonName)
+            addView(scientificName)
+            addView(category)
+            addView(location)
+            addView(tags)
+            addView(notes)
         })
-        return card
+        return BioEntryViewHolder(card, thumbnail, commonName, scientificName, category, location, tags, notes)
     }
 
     private fun toggleSelection(entry: BioEntry) {
@@ -281,11 +314,16 @@ class BioCollectionActivity : AppCompatActivity() {
         )
     }
 
-    private fun thumbnail(entry: BioEntry): ImageView = ImageView(this).apply {
-        contentDescription = "${entry.commonName} thumbnail"
-        setBackgroundResource(R.drawable.bg_bio_thumbnail)
+    private fun openBioMap() {
+        startActivity(
+            Intent(this, BioMapActivity::class.java)
+                .putExtra(MainBottomNav.EXTRA_USERNAME, navUsername)
+        )
+    }
+
+    private fun thumbnail(): ImageView = roundedImageView(this, dp(10).toFloat()).apply {
         setImageResource(R.drawable.ic_bio_record_photo)
-        setPadding(dp(14), dp(14), dp(14), dp(14))
+        setPadding(0, 0, 0, 0)
         layoutParams = LinearLayout.LayoutParams(dp(74), dp(74)).apply {
             rightMargin = dp(14)
         }
@@ -294,17 +332,13 @@ class BioCollectionActivity : AppCompatActivity() {
     private fun loadThumbnail(entry: BioEntry, imageView: ImageView) {
         if (entry.photoUrl.isBlank()) return
         bioScope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                runCatching {
-                    val url = if (entry.photoUrl.startsWith("http")) {
-                        entry.photoUrl
-                    } else {
-                        repository.createSignedPhotoUrl(entry.photoUrl)
-                    }
-                    URL(url).openStream().use(BitmapFactory::decodeStream)
-                }.getOrNull()
-            }
-            if (bitmap != null) {
+            val bitmap = BioImageLoader.loadBitmap(
+                photoRef = entry.photoUrl,
+                targetWidthPx = dp(148),
+                targetHeightPx = dp(148),
+                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+            )
+            if (bitmap != null && imageView.tag == entry.photoUrl) {
                 imageView.setPadding(0, 0, 0, 0)
                 imageView.scaleType = ImageView.ScaleType.CENTER_CROP
                 imageView.setImageBitmap(bitmap)
@@ -348,6 +382,34 @@ class BioCollectionActivity : AppCompatActivity() {
         bioScope.cancel()
         super.onDestroy()
     }
+
+    private inner class BioEntryAdapter : RecyclerView.Adapter<BioEntryViewHolder>() {
+        private var currentEntries: List<BioEntry> = emptyList()
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BioEntryViewHolder = createEntryViewHolder()
+
+        override fun onBindViewHolder(holder: BioEntryViewHolder, position: Int) {
+            populateEntryCard(holder.card, holder, currentEntries[position])
+        }
+
+        override fun getItemCount(): Int = currentEntries.size
+
+        fun submitEntries(nextEntries: List<BioEntry>) {
+            currentEntries = nextEntries
+            notifyDataSetChanged()
+        }
+    }
+
+    private class BioEntryViewHolder(
+        val card: LinearLayout,
+        val thumbnail: ImageView,
+        val commonName: TextView,
+        val scientificName: TextView,
+        val category: TextView,
+        val location: TextView,
+        val tags: TextView,
+        val notes: TextView
+    ) : RecyclerView.ViewHolder(card)
 }
 
 private enum class BioCollectionSort(val label: String) {
