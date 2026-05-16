@@ -18,7 +18,6 @@ import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
-import com.example.biomemo.screens.capture.CaptureActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,30 +65,8 @@ class BioCollectionActivity : AppCompatActivity() {
         }
         findViewById<LinearLayout>(R.id.linearlayoutBioCollectionActions).apply {
             removeAllViews()
-            addView(primaryActionRow())
             addView(sortRow())
             if (selectedEntryIds.isNotEmpty()) addView(selectionActionRow())
-        }
-    }
-
-    private fun primaryActionRow(): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(10) }
-            addView(button("New", R.drawable.bg_chip_sun, R.color.bio_forest_900).apply {
-                setOnClickListener { startActivity(Intent(this@BioCollectionActivity, CaptureActivity::class.java)) }
-            })
-            addView(button("Select all", R.drawable.bg_chip, R.color.bio_forest_700).apply {
-                setOnClickListener {
-                    selectedEntryIds.clear()
-                    selectedEntryIds += entries.map { it.id }
-                    renderCollection()
-                }
-            })
         }
     }
 
@@ -122,6 +99,13 @@ class BioCollectionActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = dp(4) }
+            addView(button("Select all", R.drawable.bg_chip, R.color.bio_forest_700).apply {
+                setOnClickListener {
+                    selectedEntryIds.clear()
+                    selectedEntryIds += entries.map { it.id }
+                    renderCollection()
+                }
+            })
             addView(button("Open", R.drawable.bg_chip_outline, R.color.bio_forest_700).apply {
                 isEnabled = selectedEntryIds.size == 1
                 alpha = if (isEnabled) 1f else 0.45f
@@ -180,9 +164,6 @@ class BioCollectionActivity : AppCompatActivity() {
             addView(text(entry.scientificName, 13, R.color.bio_ink_muted, false))
             addView(text("${entry.category} · ${entry.confidence}% match", 13, R.color.bio_forest_600, true))
             addView(text("${entry.date} · ${entry.location}", 13, R.color.bio_ink_muted, false))
-            if (selectedEntryIds.isNotEmpty()) {
-                addView(selectionPill(isSelected))
-            }
             addView(text(entry.tags.joinToString(" · "), 12, R.color.bio_forest_700, true).apply {
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
@@ -193,21 +174,6 @@ class BioCollectionActivity : AppCompatActivity() {
             })
         })
         return card
-    }
-
-    private fun selectionPill(isSelected: Boolean): TextView {
-        return text(if (isSelected) "Selected" else "Tap to select", 12, if (isSelected) R.color.bio_forest_700 else R.color.bio_ink_muted, true).apply {
-            gravity = Gravity.CENTER
-            setBackgroundResource(if (isSelected) R.drawable.bg_chip else R.drawable.bg_chip_outline)
-            setPadding(dp(10), dp(5), dp(10), dp(5))
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(4)
-                bottomMargin = dp(3)
-            }
-        }
     }
 
     private fun toggleSelection(entry: BioEntry) {
