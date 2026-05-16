@@ -295,6 +295,24 @@ class BioRepositoryTest {
         assertEquals("user-123/record-abc/original.jpg", gateway.signedPhotoPath)
     }
 
+    @Test
+    fun deleteEntriesDelegatesAndClearsCachedRecords() = runBlocking {
+        val gateway = FakeBioRecordGateway(
+            listOf(
+                sampleRow(id = "keep-record"),
+                sampleRow(id = "delete-record")
+            )
+        )
+        val repository = BioRepository(gateway)
+
+        assertEquals(2, repository.getAllEntries().size)
+        val deletedCount = repository.deleteEntries(listOf("delete-record", "delete-record", " "))
+
+        assertEquals(1, deletedCount)
+        assertEquals(listOf("delete-record"), gateway.deletedIds)
+        assertEquals(listOf("keep-record"), repository.getAllEntries().map { it.id })
+    }
+
     private fun sampleRow(
         id: String = "record-1",
         locationLabel: String = "Mossy Creek",
@@ -335,9 +353,13 @@ class BioRepositoryTest {
         var signedPhotoPath: String? = null
         var upsertedSpeciesProfile: BioRecordSpeciesProfileUpsert? = null
         var upsertedSpeciesProfileRow: SpeciesProfileRow? = null
+        var deletedIds: List<String> = emptyList()
+        var deletedPhotoPaths: List<String> = emptyList()
+        private val deletedIdSet = mutableSetOf<String>()
 
         override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
-            return limit?.let { rows.take(it) } ?: rows
+            val activeRows = rows.filterNot { it.id in deletedIdSet }
+            return limit?.let { activeRows.take(it) } ?: activeRows
         }
 
         override suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow> {
@@ -346,6 +368,12 @@ class BioRepositoryTest {
 
         override suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
             return speciesProfiles + listOfNotNull(upsertedSpeciesProfileRow)
+        }
+
+        override suspend fun deleteBioRecords(ids: List<String>, photoPaths: List<String>) {
+            deletedIds = ids
+            deletedPhotoPaths = photoPaths
+            deletedIdSet += ids
         }
 
         override suspend fun currentUserId(): String? = userId

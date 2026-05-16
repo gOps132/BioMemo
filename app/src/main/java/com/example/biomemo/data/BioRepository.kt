@@ -34,6 +34,7 @@ interface BioRecordGateway {
     suspend fun fetchBioRecords(limit: Int? = null): List<BioRecordRow>
     suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow>
     suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow>
+    suspend fun deleteBioRecords(ids: List<String>, photoPaths: List<String>)
     suspend fun currentUserId(): String?
     suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String)
     suspend fun insertBioRecordDraft(draft: NewBioRecordDraft): BioRecordRow
@@ -231,6 +232,18 @@ class BioRepository(
             .filter { it.isNotBlank() && it != UNIDENTIFIED_COMMON_NAME && it != AWAITING_IDENTIFICATION }
             .distinctBy { it.lowercase() }
             .take(limit)
+    }
+
+    suspend fun deleteEntries(ids: Collection<String>): Int {
+        val distinctIds = ids.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (distinctIds.isEmpty()) return 0
+        val rowsToDelete = fetchBioRecords().filter { it.id in distinctIds }
+        val photoPaths = rowsToDelete.mapNotNull { it.photoUrl.storagePathOrNull() }
+        gateway.deleteBioRecords(distinctIds, photoPaths)
+        cache.bioRecords = cache.bioRecords?.filterNot { it.id in distinctIds }
+        cache.identificationCandidates = cache.identificationCandidates?.filterNot { it.bioRecordId in distinctIds }
+        cache.entries = cache.entries?.filterNot { it.id in distinctIds }
+        return distinctIds.size
     }
 
     suspend fun createDraftUploadRecord(photo: BioRecordPhotoUpload): BioEntry {
@@ -502,6 +515,8 @@ private fun String?.presentOr(fallback: String): String = this?.takeIf { it.isNo
 
 private fun String?.presentOrNull(): String? = this?.takeIf { it.isNotBlank() }
 
+private fun String?.storagePathOrNull(): String? = this?.takeIf { it.isNotBlank() && !it.startsWith("http") }
+
 private fun List<IdentificationCandidateRow>?.bestCandidate(): IdentificationCandidateRow? {
     return this
         ?.sortedWith(
@@ -560,6 +575,23 @@ class SupabaseBioRecordGateway(
         return client.from("species_profiles")
             .select()
             .decodeList<SpeciesProfileRow>()
+    }
+
+    override suspend fun deleteBioRecords(ids: List<String>, photoPaths: List<String>) {
+        if (ids.isEmpty()) return
+        val userId = currentUserId() ?: error("Sign in before deleting BioRecords.")
+        client.from("bio_records")
+            .delete {
+                filter {
+                    eq("user_id", userId)
+                    isIn("id", ids)
+                }
+            }
+        if (photoPaths.isNotEmpty()) {
+            runCatching {
+                client.storage.from(BIORECORD_PHOTO_BUCKET).delete(photoPaths)
+            }
+        }
     }
 
     override suspend fun currentUserId(): String? {
