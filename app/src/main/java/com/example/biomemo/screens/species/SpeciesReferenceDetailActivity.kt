@@ -1,5 +1,6 @@
 package com.example.biomemo.screens.species
 
+import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
@@ -72,7 +73,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            if (label in ENRICHMENT_LOADING_LABELS && value == NOT_ENRICHED) {
+            if (label in ENRICHMENT_LOADING_LABELS && value.isPendingEnrichment()) {
                 container.addView(loadingValue())
             } else {
                 container.addView(text(value, 15, R.color.bio_ink, false))
@@ -81,12 +82,18 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
     }
 
     private fun loadingValue(): ProgressBar {
-        return ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+        return ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             isIndeterminate = true
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
+            indeterminateTintList = ColorStateList.valueOf(getColor(R.color.bio_forest_700))
+            layoutParams = LinearLayout.LayoutParams(dp(150), dp(8)).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(6)
+            }
             contentDescription = "Loading enrichment"
         }
     }
+
+    private fun String.isPendingEnrichment(): Boolean = trim().equals(NOT_ENRICHED, ignoreCase = true)
 
     private fun renderPhoto(detail: SpeciesReferenceDetail) {
         val imageView = findViewById<ImageView>(R.id.imageviewSpeciesReferencePhoto)
