@@ -30,7 +30,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.textviewSpeciesReferenceBack).setOnClickListener { finish() }
         val species = readSpeciesFromIntent()
-        renderDetail(species.toSpeciesReferenceDetail(), isEnriching = true)
+        renderDetail(species.toSpeciesReferenceDetail())
         loadEnrichment(species)
     }
 
@@ -39,8 +39,6 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             val enrichment = runCatching { speciesRepository.previewEnrichment(species) }.getOrNull()
             if (enrichment != null) {
                 renderDetail(species.toSpeciesReferenceDetail(enrichment))
-            } else {
-                renderDetail(species.toSpeciesReferenceDetail())
             }
         }
     }
@@ -62,7 +60,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun renderDetail(detail: SpeciesReferenceDetail, isEnriching: Boolean = false) {
+    private fun renderDetail(detail: SpeciesReferenceDetail) {
         findViewById<TextView>(R.id.textviewSpeciesReferenceTitle).text = detail.title
         findViewById<TextView>(R.id.textviewSpeciesReferenceSubtitle).text = detail.subtitle
         findViewById<TextView>(R.id.textviewSpeciesReferenceHeroMeta).text = "Public species reference · read-only"
@@ -74,7 +72,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            if (isEnriching && label in ENRICHMENT_LOADING_LABELS && value == NOT_ENRICHED) {
+            if (label in ENRICHMENT_LOADING_LABELS && value == NOT_ENRICHED) {
                 container.addView(loadingValue())
             } else {
                 container.addView(text(value, 15, R.color.bio_ink, false))

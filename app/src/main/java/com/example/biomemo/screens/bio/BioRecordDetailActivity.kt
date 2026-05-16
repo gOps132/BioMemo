@@ -44,16 +44,16 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
             val username = currentUsername()
             val shouldEnrich = entry.taxonomy == NOT_ENRICHED && entry.scientificName != AWAITING_IDENTIFICATION
-            renderEntry(entry, username, isEnriching = shouldEnrich)
+            renderEntry(entry, username)
             if (shouldEnrich) {
                 repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
                     renderEntry(enrichedEntry, username)
-                } ?: renderEntry(entry, username)
+                }
             }
         }
     }
 
-    private fun renderEntry(entry: BioEntry, username: String, isEnriching: Boolean = false) {
+    private fun renderEntry(entry: BioEntry, username: String) {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
         heroImage.contentDescription = "${entry.commonName} photo"
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
@@ -89,7 +89,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 "Source API" to entry.sourceApi,
                 "Last enriched" to entry.lastEnrichedDate
             ),
-            loadingLabels = if (isEnriching) ENRICHMENT_LOADING_LABELS else emptySet()
+            loadingLabels = ENRICHMENT_LOADING_LABELS
         )
 
         renderTags(entry.tags.filterNot { it == entry.verificationStatus })
