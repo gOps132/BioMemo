@@ -57,7 +57,26 @@ class SupabaseAuthRepositoryTest {
     }
 
     @Test
-    fun signUpExistingUsernameOrEmailReturnsFriendlyFailure() = runBlocking {
+    fun signUpExistingEmailReturnsEmailTakenFailure() = runBlocking {
+        val gateway = FakeAuthGateway(
+            signUpUser = AuthUser("user-1", "fern@biomemo.app"),
+            resolvedLogins = mapOf("fern@biomemo.app" to "existing@biomemo.app")
+        )
+        val repository = SupabaseAuthRepository(gateway)
+
+        val result = repository.signUp(
+            email = "fern@biomemo.app",
+            password = "secret123",
+            username = "fern"
+        )
+
+        assertTrue(result is SupabaseAuthResult.Failure)
+        assertEquals("Email already in use", (result as SupabaseAuthResult.Failure).message)
+        assertFalse(gateway.signUpCalled)
+    }
+
+    @Test
+    fun signUpExistingUsernameReturnsUsernameTakenFailure() = runBlocking {
         val gateway = FakeAuthGateway(
             signUpUser = AuthUser("user-1", "fern@biomemo.app"),
             resolvedLogins = mapOf("fern" to "existing@biomemo.app")
@@ -71,7 +90,7 @@ class SupabaseAuthRepositoryTest {
         )
 
         assertTrue(result is SupabaseAuthResult.Failure)
-        assertEquals("Username or email already exists", (result as SupabaseAuthResult.Failure).message)
+        assertEquals("Username already taken", (result as SupabaseAuthResult.Failure).message)
         assertFalse(gateway.signUpCalled)
     }
 
@@ -96,6 +115,25 @@ class SupabaseAuthRepositoryTest {
 
         assertTrue(result is SupabaseAuthResult.Failure)
         assertEquals("Invalid username/email or password", (result as SupabaseAuthResult.Failure).message)
+    }
+
+    @Test
+    fun weakPasswordExceptionReturnsSafeRequirementMessage() = runBlocking {
+        val gateway = FakeAuthGateway(
+            failure = IllegalStateException(
+                "weak_password (Password should be at least 6 characters.: weak_password) " +
+                    "URL: https://example.supabase.co/auth/v1/signup Headers: [Authorization=[Bearer secret]]"
+            )
+        )
+        val repository = SupabaseAuthRepository(gateway)
+
+        val result = repository.signUp("trail@biomemo.app", "123456", "trail")
+
+        assertTrue(result is SupabaseAuthResult.Failure)
+        val message = (result as SupabaseAuthResult.Failure).message
+        assertEquals("Password must be at least 6 characters.", message)
+        assertFalse(message.contains("URL:"))
+        assertFalse(message.contains("Authorization"))
     }
 
     @Test

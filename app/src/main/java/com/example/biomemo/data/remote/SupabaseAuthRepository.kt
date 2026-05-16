@@ -43,13 +43,17 @@ class SupabaseAuthRepository(
         val cleanEmail = email.trim()
         val cleanUsername = username.trim()
         if (cleanEmail.isEmpty() || cleanUsername.isEmpty() || password.isEmpty()) {
-            return SupabaseAuthResult.Failure("Please enter email, username, and password")
+            return SupabaseAuthResult.Failure("Please fill out all fields")
         }
 
         val existingEmail = resolveExistingLogin(cleanEmail)
+        if (existingEmail != null) {
+            return SupabaseAuthResult.Failure("Email already in use")
+        }
+
         val existingUsername = resolveExistingLogin(cleanUsername)
-        if (existingEmail != null || existingUsername != null) {
-            return SupabaseAuthResult.Failure("Username or email already exists")
+        if (existingUsername != null) {
+            return SupabaseAuthResult.Failure("Username already taken")
         }
 
         return runAuthCall {
@@ -132,19 +136,34 @@ class SupabaseAuthRepository(
     }
 
     private fun friendlyAuthMessage(message: String?): String {
-        val fallback = message ?: "Authentication failed"
-        val normalized = fallback.lowercase()
+        val normalized = message.orEmpty().lowercase()
         return when {
+            normalized.contains("weak_password") ||
+                normalized.contains("password should be at least") ||
+                normalized.contains("password must be at least") -> {
+                    "Password must be at least 6 characters."
+                }
             normalized.contains("already registered") ||
+                normalized.contains("user already registered") -> "Email already in use"
+            normalized.contains("username") && (
                 normalized.contains("already exists") ||
+                    normalized.contains("duplicate key") ||
+                    normalized.contains("23505")
+                ) -> "Username already taken"
+            normalized.contains("already exists") ||
                 normalized.contains("duplicate key") ||
-                normalized.contains("23505") -> "Username or email already exists"
+                normalized.contains("23505") -> "Email or username already in use"
             normalized.contains("invalid login credentials") -> "Invalid username/email or password"
             normalized.contains("email not confirmed") -> "Please confirm your email before signing in"
             normalized.contains("over_email_send_rate_limit") -> {
                 "Too many auth emails were sent. Try again in a minute."
             }
-            else -> fallback
+            normalized.contains("network") ||
+                normalized.contains("timeout") ||
+                normalized.contains("unable to resolve host") -> {
+                    "Network error. Check your connection and try again."
+                }
+            else -> "Authentication failed. Please try again."
         }
     }
 

@@ -8,8 +8,16 @@ class RegisterPresenter(
 ) : RegisterContract.Presenter {
 
     override suspend fun onRegisterClicked(email: String, username: String, pass: String, rePass: String) {
-        if (email.isEmpty() || username.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
-            view.showError("Please complete all fields")
+        val cleanEmail = email.trim()
+        val cleanUsername = username.trim()
+
+        if (cleanEmail.isEmpty() || cleanUsername.isEmpty() || pass.isEmpty() || rePass.isEmpty()) {
+            view.showError("Please fill out all fields")
+            return
+        }
+
+        if (pass.length < 6) {
+            view.showError("Password must be at least 6 characters.")
             return
         }
 
@@ -18,7 +26,7 @@ class RegisterPresenter(
             return
         }
 
-        when (val result = model.registerUser(email, pass, username)) {
+        when (val result = model.registerUser(cleanEmail, pass, cleanUsername)) {
             is SupabaseAuthResult.Success -> {
                 view.showSuccess("Registration successful")
                 view.navigateToLogin()

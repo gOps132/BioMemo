@@ -31,11 +31,11 @@ class RegisterPresenterTest {
     }
 
     @Test
-    fun failedRegistrationShowsSupabaseError() = runBlocking {
+    fun failedRegistrationShowsFriendlyError() = runBlocking {
         val view = FakeRegisterView()
         val presenter = RegisterPresenter(
             view,
-            FakeRegisterModel(SupabaseAuthResult.Failure("User already registered"))
+            FakeRegisterModel(SupabaseAuthResult.Failure("Email already in use"))
         )
 
         presenter.onRegisterClicked(
@@ -45,7 +45,7 @@ class RegisterPresenterTest {
             rePass = "secret123"
         )
 
-        assertEquals("User already registered", view.errorMessage)
+        assertEquals("Email already in use", view.errorMessage)
         assertTrue(!view.navigatedLogin)
     }
 
@@ -56,7 +56,24 @@ class RegisterPresenterTest {
 
         presenter.onRegisterClicked("", "", "", "")
 
-        assertEquals("Please complete all fields", view.errorMessage)
+        assertEquals("Please fill out all fields", view.errorMessage)
+    }
+
+    @Test
+    fun shortPasswordShowsPasswordRequirement() = runBlocking {
+        val view = FakeRegisterView()
+        val model = FakeRegisterModel()
+        val presenter = RegisterPresenter(view, model)
+
+        presenter.onRegisterClicked(
+            email = "field@biomemo.app",
+            username = "fieldnotes",
+            pass = "12345",
+            rePass = "12345"
+        )
+
+        assertEquals("Password must be at least 6 characters.", view.errorMessage)
+        assertTrue(!model.registerCalled)
     }
 
     @Test
@@ -74,8 +91,10 @@ class RegisterPresenterTest {
     ) : RegisterAuthModel {
         var email: String? = null
         var username: String? = null
+        var registerCalled = false
 
         override suspend fun registerUser(email: String, password: String, username: String): SupabaseAuthResult {
+            registerCalled = true
             this.email = email
             this.username = username
             return result

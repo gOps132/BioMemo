@@ -22,13 +22,35 @@ class LoginPresenterTest {
     }
 
     @Test
-    fun emptyCredentialsStillShowValidationError() {
+    fun emptyCredentialsShowFillAllFieldsValidationError() {
         val view = FakeLoginView()
         val presenter = LoginPresenter(view, FakeLoginModel())
 
         runBlocking { presenter.onLoginClicked("", "") }
 
-        assertEquals("Please enter username/email and password", view.lastError)
+        assertEquals("Please fill out all fields", view.lastError)
+        assertTrue(view.navigatedDashboardUser == null)
+    }
+
+    @Test
+    fun missingPasswordShowsPasswordValidationError() {
+        val view = FakeLoginView()
+        val presenter = LoginPresenter(view, FakeLoginModel())
+
+        runBlocking { presenter.onLoginClicked("trail@biomemo.app", "") }
+
+        assertEquals("Please enter your password", view.lastError)
+        assertTrue(view.navigatedDashboardUser == null)
+    }
+
+    @Test
+    fun missingUsernameOrEmailShowsIdentifierValidationError() {
+        val view = FakeLoginView()
+        val presenter = LoginPresenter(view, FakeLoginModel())
+
+        runBlocking { presenter.onLoginClicked("", "secret123") }
+
+        assertEquals("Please enter your username or email", view.lastError)
         assertTrue(view.navigatedDashboardUser == null)
     }
 

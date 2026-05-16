@@ -7,9 +7,20 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -35,6 +46,8 @@ interface BioRecordGateway {
     suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow>
     suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow>
     suspend fun deleteBioRecords(ids: List<String>, photoPaths: List<String>)
+    suspend fun fetchBioRecordById(id: String): BioRecordRow?
+    fun observeBioRecord(id: String): Flow<BioRecordRow>
     suspend fun currentUserId(): String?
     suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String)
     suspend fun insertBioRecordDraft(draft: NewBioRecordDraft): BioRecordRow
@@ -49,6 +62,7 @@ data class BioRecordRow(
     val id: String,
     @SerialName("user_id") val userId: String,
     @SerialName("species_profile_id") val speciesProfileId: String? = null,
+    @SerialName("species_profiles") val speciesProfile: SpeciesProfileRow? = null,
     @SerialName("photo_url") val photoUrl: String? = null,
     @SerialName("thumbnail_url") val thumbnailUrl: String? = null,
     @SerialName("source_type") val sourceType: String,
@@ -188,7 +202,22 @@ class BioRepository(
     }
 
     suspend fun getEntryById(id: String): BioEntry? {
-        return getAllEntries().firstOrNull { it.id == id }
+        val row = gateway.fetchBioRecordById(id) ?: return null
+        val candidate = fetchIdentificationCandidates()
+            .filter { it.bioRecordId == id }
+            .bestCandidate()
+        val profile = row.speciesProfileId?.let { profileId ->
+            fetchSpeciesProfiles().firstOrNull { it.id == profileId }
+        }
+        return row.toBioEntry(candidate, profile)
+    }
+
+    fun observeEntryById(id: String): Flow<BioEntry> {
+        return kotlinx.coroutines.flow.flow {
+            gateway.observeBioRecord(id).collect { row ->
+                emit(row.toBioEntry())
+            }
+        }
     }
 
     suspend fun getStats(): BioStats {
@@ -424,10 +453,11 @@ class BioRepository(
         val statusLabel = verificationStatus.ifBlank { "draft" }
         val metadataLabel = metadataAvailability.ifBlank { "unknown" }
         val sourceLabel = sourceType.ifBlank { "unknown" }
-        val commonNameLabel = speciesProfile?.commonName?.takeIf { it.isNotBlank() }
+        val species = speciesProfile ?: this.speciesProfile
+        val commonNameLabel = species?.commonName?.takeIf { it.isNotBlank() }
             ?: candidate?.commonName?.takeIf { it.isNotBlank() }
             ?: UNIDENTIFIED_COMMON_NAME
-        val scientificNameLabel = speciesProfile?.scientificName?.takeIf { it.isNotBlank() }
+        val scientificNameLabel = species?.scientificName?.takeIf { it.isNotBlank() }
             ?: candidate?.scientificName?.takeIf { it.isNotBlank() }
             ?: AWAITING_IDENTIFICATION
         val confidenceLabel = candidate?.confidenceScore ?: confidenceScore ?: 0
@@ -457,16 +487,19 @@ class BioRepository(
             savedDate = savedLabel,
             verificationStatus = statusLabel,
             metadataAvailability = metadataLabel,
-            taxonomy = speciesProfile?.taxonomy.presentOr(NOT_ENRICHED),
-            habitat = speciesProfile?.habitat.presentOr(NOT_ENRICHED),
-            diet = speciesProfile?.diet.presentOr(NOT_ENRICHED),
-            lifespan = speciesProfile?.lifespan.presentOr(NOT_ENRICHED),
-            distribution = speciesProfile?.distribution.presentOr(NOT_ENRICHED),
-            conservationStatus = speciesProfile?.conservationStatus.presentOr(NOT_ENRICHED),
-            sourceApi = speciesProfile?.sourceApi.presentOr(if (candidate == null) "Pending identification" else "Gemini image identification"),
-            lastEnrichedDate = speciesProfile?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
+            taxonomy = species?.taxonomy.presentOrNull() ?: NOT_ENRICHED,
+            habitat = species?.habitat.presentOrNull() ?: NOT_ENRICHED,
+            diet = species?.diet.presentOrNull() ?: NOT_ENRICHED,
+            lifespan = species?.lifespan.presentOrNull() ?: NOT_ENRICHED,
+            distribution = species?.distribution.presentOrNull() ?: NOT_ENRICHED,
+            conservationStatus = species?.conservationStatus.presentOrNull() ?: NOT_ENRICHED,
+            sourceApi = species?.sourceApi.presentOrNull()
+                ?: if (candidate == null) "Pending identification" else "Gemini image identification",
+            lastEnrichedDate = species?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
         )
     }
+
+    private fun String?.presentOrNull(): String? = this?.takeIf { it.isNotBlank() }
 
     private fun String.toDisplayDate(): String {
         return try {
@@ -568,7 +601,7 @@ class SupabaseBioRecordGateway(
         val userId = currentUserId() ?: return emptyList()
 
         return client.from("bio_records")
-            .select {
+            .select(BIO_RECORD_COLUMNS) {
                 filter {
                     eq("user_id", userId)
                 }
@@ -603,6 +636,60 @@ class SupabaseBioRecordGateway(
         if (photoPaths.isNotEmpty()) {
             runCatching {
                 client.storage.from(BIORECORD_PHOTO_BUCKET).delete(photoPaths)
+            }
+        }
+    }
+
+    override suspend fun fetchBioRecordById(id: String): BioRecordRow? {
+        val userId = currentUserId() ?: return null
+
+        return client.from("bio_records")
+            .select(BIO_RECORD_COLUMNS) {
+                filter {
+                    eq("user_id", userId)
+                    eq("id", id)
+                }
+                limit(1)
+            }
+            .decodeList<BioRecordRow>()
+            .firstOrNull()
+    }
+
+    override fun observeBioRecord(id: String): Flow<BioRecordRow> = callbackFlow {
+        suspend fun sendLatest() {
+            fetchBioRecordById(id)?.let { trySend(it) }
+        }
+
+        val recordChannel = client.channel("bio-record-$id")
+        val recordChanges = recordChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "bio_records"
+            filter("id", FilterOperator.EQ, id)
+        }
+
+        val speciesChannel = client.channel("bio-record-$id-species")
+        val speciesChanges = speciesChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "species_profiles"
+        }
+
+        val recordJob = launch {
+            recordChanges.collect { sendLatest() }
+        }
+        val speciesJob = launch {
+            speciesChanges.collect { sendLatest() }
+        }
+
+        sendLatest()
+        recordChannel.subscribe(blockUntilSubscribed = true)
+        speciesChannel.subscribe(blockUntilSubscribed = true)
+
+        awaitClose {
+            recordJob.cancel()
+            speciesJob.cancel()
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching { recordChannel.unsubscribe() }
+                runCatching { speciesChannel.unsubscribe() }
+                runCatching { client.realtime.removeChannel(recordChannel) }
+                runCatching { client.realtime.removeChannel(speciesChannel) }
             }
         }
     }
@@ -679,6 +766,38 @@ class SupabaseBioRecordGateway(
         const val BIORECORD_PHOTO_BUCKET = "biorecord-photos"
         const val TIMEOUT_MS = 15_000
         const val IDENTIFY_TIMEOUT_MS = 45_000
+        val BIO_RECORD_COLUMNS = Columns.raw(
+            """
+            id,
+            user_id,
+            species_profile_id,
+            photo_url,
+            thumbnail_url,
+            source_type,
+            observed_at,
+            saved_at,
+            latitude,
+            longitude,
+            location_label,
+            notes,
+            confidence_score,
+            verification_status,
+            metadata_availability,
+            species_profiles(
+                id,
+                common_name,
+                scientific_name,
+                taxonomy,
+                habitat,
+                diet,
+                lifespan,
+                distribution,
+                conservation_status,
+                source_api,
+                last_enriched_at
+            )
+            """.trimIndent()
+        )
     }
 }
 
