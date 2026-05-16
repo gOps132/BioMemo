@@ -138,6 +138,12 @@ class SupabaseAuthRepository(
     private fun friendlyAuthMessage(message: String?): String {
         val normalized = message.orEmpty().lowercase()
         return when {
+            normalized.contains("invalid_email") ||
+                normalized.contains("invalid email") ||
+                normalized.contains("validate email") ||
+                normalized.contains("email address") && normalized.contains("invalid format") -> {
+                    "Invalid email address."
+                }
             normalized.contains("weak_password") ||
                 normalized.contains("password should be at least") ||
                 normalized.contains("password must be at least") -> {
