@@ -43,6 +43,11 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
             val username = currentUsername()
             renderEntry(entry, username)
+            if (entry.taxonomy == "Not enriched yet" && entry.scientificName != "Awaiting identification") {
+                repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
+                    renderEntry(enrichedEntry, username)
+                }
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import com.example.biomemo.data.remote.SupabaseClientProvider
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
@@ -32,11 +33,13 @@ import kotlin.time.Duration.Companion.hours
 interface BioRecordGateway {
     suspend fun fetchBioRecords(limit: Int? = null): List<BioRecordRow>
     suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow>
+    suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow>
     suspend fun currentUserId(): String?
     suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String)
     suspend fun insertBioRecordDraft(draft: NewBioRecordDraft): BioRecordRow
     suspend fun insertImageMetadata(metadata: NewImageMetadata)
     suspend fun identifyBioRecordImage(recordId: String): List<IdentificationCandidateRow>
+    suspend fun upsertBioRecordSpeciesProfile(profile: BioRecordSpeciesProfileUpsert): SpeciesProfileRow
     suspend fun createSignedPhotoUrl(path: String): String
 }
 
@@ -44,6 +47,7 @@ interface BioRecordGateway {
 data class BioRecordRow(
     val id: String,
     @SerialName("user_id") val userId: String,
+    @SerialName("species_profile_id") val speciesProfileId: String? = null,
     @SerialName("photo_url") val photoUrl: String? = null,
     @SerialName("thumbnail_url") val thumbnailUrl: String? = null,
     @SerialName("source_type") val sourceType: String,
@@ -69,6 +73,21 @@ data class IdentificationCandidateRow(
     @SerialName("visible_traits") val visibleTraits: String? = null,
     @SerialName("uncertainty_notes") val uncertaintyNotes: String? = null,
     val selected: Boolean = false
+)
+
+@Serializable
+data class SpeciesProfileRow(
+    val id: String,
+    @SerialName("common_name") val commonName: String,
+    @SerialName("scientific_name") val scientificName: String,
+    val taxonomy: String? = null,
+    val habitat: String? = null,
+    val diet: String? = null,
+    val lifespan: String? = null,
+    val distribution: String? = null,
+    @SerialName("conservation_status") val conservationStatus: String? = null,
+    @SerialName("source_api") val sourceApi: String? = null,
+    @SerialName("last_enriched_at") val lastEnrichedAt: String? = null
 )
 
 data class BioRecordPhotoUpload(
@@ -120,22 +139,39 @@ data class NewImageMetadata(
     @SerialName("metadata_raw") val metadataRaw: JsonObject = buildJsonObject { }
 )
 
+@Serializable
+data class BioRecordSpeciesProfileUpsert(
+    @SerialName("p_bio_record_id") val bioRecordId: String,
+    @SerialName("p_common_name") val commonName: String,
+    @SerialName("p_scientific_name") val scientificName: String,
+    @SerialName("p_taxonomy") val taxonomy: String? = null,
+    @SerialName("p_habitat") val habitat: String? = null,
+    @SerialName("p_diet") val diet: String? = null,
+    @SerialName("p_lifespan") val lifespan: String? = null,
+    @SerialName("p_distribution") val distribution: String? = null,
+    @SerialName("p_conservation_status") val conservationStatus: String? = null,
+    @SerialName("p_source_api") val sourceApi: String? = null
+)
+
 class BioRepository(
     private val gateway: BioRecordGateway = SupabaseBioRecordGateway(),
+    private val speciesRepository: SpeciesSourceRepository = SpeciesSourceRepository(),
     private val recordIdProvider: () -> String = { UUID.randomUUID().toString() }
 ) {
     suspend fun getAllEntries(): List<BioEntry> {
         val rows = gateway.fetchBioRecords()
         if (rows.isEmpty()) return emptyList()
         val candidatesByRecord = gateway.fetchIdentificationCandidates().groupBy { it.bioRecordId }
-        return rows.map { it.toBioEntry(candidatesByRecord[it.id].bestCandidate()) }
+        val speciesProfilesById = gateway.fetchSpeciesProfiles().associateBy { it.id }
+        return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
     }
 
     suspend fun getRecentEntries(limit: Int = 2): List<BioEntry> {
         val rows = gateway.fetchBioRecords(limit)
         if (rows.isEmpty()) return emptyList()
         val candidatesByRecord = gateway.fetchIdentificationCandidates().groupBy { it.bioRecordId }
-        return rows.map { it.toBioEntry(candidatesByRecord[it.id].bestCandidate()) }
+        val speciesProfilesById = gateway.fetchSpeciesProfiles().associateBy { it.id }
+        return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
     }
 
     suspend fun getEntryById(id: String): BioEntry? {
@@ -208,7 +244,19 @@ class BioRepository(
             )
         )
         val candidates = runCatching { gateway.identifyBioRecordImage(recordId) }.getOrDefault(emptyList())
-        return insertedRow.toBioEntry(candidates.bestCandidate())
+        val bestCandidate = candidates.bestCandidate()
+        val speciesProfile = enrichCandidate(recordId, bestCandidate)
+        return insertedRow.toBioEntry(bestCandidate, speciesProfile)
+    }
+
+    suspend fun enrichBioRecordSpecies(recordId: String): BioEntry? {
+        val row = gateway.fetchBioRecords().firstOrNull { it.id == recordId } ?: return null
+        val candidate = gateway.fetchIdentificationCandidates()
+            .filter { it.bioRecordId == recordId }
+            .bestCandidate()
+            ?: return row.toBioEntry(null, null)
+        val profile = enrichCandidate(recordId, candidate)
+        return row.copy(speciesProfileId = profile?.id ?: row.speciesProfileId).toBioEntry(candidate, profile)
     }
 
     suspend fun createSignedPhotoUrl(path: String): String {
@@ -216,14 +264,43 @@ class BioRepository(
         return gateway.createSignedPhotoUrl(path)
     }
 
-    private fun BioRecordRow.toBioEntry(candidate: IdentificationCandidateRow? = null): BioEntry {
+    private suspend fun enrichCandidate(recordId: String, candidate: IdentificationCandidateRow?): SpeciesProfileRow? {
+        if (candidate == null || candidate.scientificName == AWAITING_IDENTIFICATION) return null
+        val species = runCatching {
+            speciesRepository.searchSpecies(candidate.scientificName).firstOrNull()
+                ?: candidate.commonName?.let { speciesRepository.searchSpecies(it).firstOrNull() }
+        }.getOrNull() ?: return null
+        val enrichment = runCatching { speciesRepository.previewEnrichment(species) }.getOrNull() ?: return null
+        return runCatching {
+            gateway.upsertBioRecordSpeciesProfile(
+                BioRecordSpeciesProfileUpsert(
+                    bioRecordId = recordId,
+                    commonName = enrichment.commonName.presentOr(candidate.commonName ?: species.commonName ?: species.canonicalName),
+                    scientificName = enrichment.scientificName.presentOr(species.scientificName),
+                    taxonomy = enrichment.taxonomy.presentOrNull(),
+                    habitat = enrichment.habitat.presentOrNull(),
+                    diet = enrichment.diet.presentOrNull(),
+                    lifespan = enrichment.lifespan.presentOrNull(),
+                    distribution = enrichment.distribution.presentOrNull(),
+                    conservationStatus = enrichment.conservationStatus.presentOrNull(),
+                    sourceApi = enrichment.sourceApi.presentOrNull()
+                )
+            )
+        }.getOrNull()
+    }
+
+    private fun BioRecordRow.toBioEntry(candidate: IdentificationCandidateRow? = null, speciesProfile: SpeciesProfileRow? = null): BioEntry {
         val savedLabel = savedAt.toDisplayDate()
         val observedLabel = observedAt?.toDisplayDate() ?: "Not recorded"
         val statusLabel = verificationStatus.ifBlank { "draft" }
         val metadataLabel = metadataAvailability.ifBlank { "unknown" }
         val sourceLabel = sourceType.ifBlank { "unknown" }
-        val commonNameLabel = candidate?.commonName?.takeIf { it.isNotBlank() } ?: UNIDENTIFIED_COMMON_NAME
-        val scientificNameLabel = candidate?.scientificName?.takeIf { it.isNotBlank() } ?: AWAITING_IDENTIFICATION
+        val commonNameLabel = speciesProfile?.commonName?.takeIf { it.isNotBlank() }
+            ?: candidate?.commonName?.takeIf { it.isNotBlank() }
+            ?: UNIDENTIFIED_COMMON_NAME
+        val scientificNameLabel = speciesProfile?.scientificName?.takeIf { it.isNotBlank() }
+            ?: candidate?.scientificName?.takeIf { it.isNotBlank() }
+            ?: AWAITING_IDENTIFICATION
         val confidenceLabel = candidate?.confidenceScore ?: confidenceScore ?: 0
         val notesLabel = listOfNotNull(
             notes?.takeIf { it.isNotBlank() },
@@ -251,14 +328,14 @@ class BioRepository(
             savedDate = savedLabel,
             verificationStatus = statusLabel,
             metadataAvailability = metadataLabel,
-            taxonomy = NOT_ENRICHED,
-            habitat = NOT_ENRICHED,
-            diet = NOT_ENRICHED,
-            lifespan = NOT_ENRICHED,
-            distribution = NOT_ENRICHED,
-            conservationStatus = NOT_ENRICHED,
-            sourceApi = if (candidate == null) "Pending identification" else "Gemini image identification",
-            lastEnrichedDate = NOT_ENRICHED
+            taxonomy = speciesProfile?.taxonomy.presentOr(NOT_ENRICHED),
+            habitat = speciesProfile?.habitat.presentOr(NOT_ENRICHED),
+            diet = speciesProfile?.diet.presentOr(NOT_ENRICHED),
+            lifespan = speciesProfile?.lifespan.presentOr(NOT_ENRICHED),
+            distribution = speciesProfile?.distribution.presentOr(NOT_ENRICHED),
+            conservationStatus = speciesProfile?.conservationStatus.presentOr(NOT_ENRICHED),
+            sourceApi = speciesProfile?.sourceApi.presentOr(if (candidate == null) "Pending identification" else "Gemini image identification"),
+            lastEnrichedDate = speciesProfile?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
         )
     }
 
@@ -277,6 +354,10 @@ class BioRepository(
         val DISPLAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
     }
 }
+
+private fun String?.presentOr(fallback: String): String = this?.takeIf { it.isNotBlank() } ?: fallback
+
+private fun String?.presentOrNull(): String? = this?.takeIf { it.isNotBlank() }
 
 private fun List<IdentificationCandidateRow>?.bestCandidate(): IdentificationCandidateRow? {
     return this
@@ -330,6 +411,12 @@ class SupabaseBioRecordGateway(
         return client.from("identification_candidates")
             .select()
             .decodeList<IdentificationCandidateRow>()
+    }
+
+    override suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
+        return client.from("species_profiles")
+            .select()
+            .decodeList<SpeciesProfileRow>()
     }
 
     override suspend fun currentUserId(): String? {
@@ -386,6 +473,15 @@ class SupabaseBioRecordGateway(
         json.decodeFromString<IdentifyBioRecordResponse>(body).candidates
     }
 
+    override suspend fun upsertBioRecordSpeciesProfile(profile: BioRecordSpeciesProfileUpsert): SpeciesProfileRow {
+        return client.postgrest
+            .rpc(
+                function = "upsert_biorecord_species_profile",
+                parameters = profile.toJsonObject()
+            )
+            .decodeSingle<SpeciesProfileRow>()
+    }
+
     override suspend fun createSignedPhotoUrl(path: String): String {
         return client.storage.from(BIORECORD_PHOTO_BUCKET)
             .createSignedUrl(path, expiresIn = 1.hours)
@@ -407,3 +503,18 @@ private data class IdentifyBioRecordRequest(
 private data class IdentifyBioRecordResponse(
     val candidates: List<IdentificationCandidateRow> = emptyList()
 )
+
+private fun BioRecordSpeciesProfileUpsert.toJsonObject(): JsonObject {
+    return buildJsonObject {
+        put("p_bio_record_id", bioRecordId)
+        put("p_common_name", commonName)
+        put("p_scientific_name", scientificName)
+        put("p_taxonomy", taxonomy)
+        put("p_habitat", habitat)
+        put("p_diet", diet)
+        put("p_lifespan", lifespan)
+        put("p_distribution", distribution)
+        put("p_conservation_status", conservationStatus)
+        put("p_source_api", sourceApi)
+    }
+}

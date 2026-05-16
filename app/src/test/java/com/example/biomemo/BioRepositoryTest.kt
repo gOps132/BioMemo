@@ -5,9 +5,16 @@ import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRecordRow
 import com.example.biomemo.data.BioRecordPhotoUpload
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordSpeciesProfileUpsert
+import com.example.biomemo.data.GbifSpeciesSearchRow
 import com.example.biomemo.data.IdentificationCandidateRow
 import com.example.biomemo.data.NewBioRecordDraft
 import com.example.biomemo.data.NewImageMetadata
+import com.example.biomemo.data.SpeciesEnrichmentPreview
+import com.example.biomemo.data.SpeciesProfileRow
+import com.example.biomemo.data.SpeciesSearchResult
+import com.example.biomemo.data.SpeciesSourceGateway
+import com.example.biomemo.data.SpeciesSourceRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
@@ -70,6 +77,64 @@ class BioRepositoryTest {
         assertEquals(82, entry?.confidence)
         assertEquals("Gemini image identification", entry?.sourceApi)
         assertTrue(entry?.notes?.contains("AI reasoning: Warty skin") == true)
+    }
+
+    @Test
+    fun mapsLinkedSpeciesProfileToSpeciesDetails() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-profile", speciesProfileId = "species-1")),
+                speciesProfiles = listOf(
+                    SpeciesProfileRow(
+                        id = "species-1",
+                        commonName = "Bernese Mountain Dog",
+                        scientificName = "Canis familiaris",
+                        taxonomy = "Animalia > Chordata > Mammalia",
+                        habitat = "Domestic environments.",
+                        diet = "Omnivorous domestic diet.",
+                        lifespan = "7 to 10 years.",
+                        distribution = "Worldwide as a domestic breed.",
+                        conservationStatus = "least concern",
+                        sourceApi = "GBIF, Wikipedia",
+                        lastEnrichedAt = "2026-05-16T00:00:00Z"
+                    )
+                )
+            )
+        )
+
+        val entry = repository.getEntryById("record-with-profile")
+
+        assertEquals("Bernese Mountain Dog", entry?.commonName)
+        assertEquals("Canis familiaris", entry?.scientificName)
+        assertEquals("Domestic environments.", entry?.habitat)
+        assertEquals("May 16, 2026", entry?.lastEnrichedDate)
+    }
+
+    @Test
+    fun enrichBioRecordSpeciesStoresProfileFromBestCandidate() = runBlocking {
+        val gateway = FakeBioRecordGateway(
+            rows = listOf(sampleRow(id = "record-to-enrich")),
+            identificationCandidates = listOf(
+                IdentificationCandidateRow(
+                    bioRecordId = "record-to-enrich",
+                    commonName = "Bernese Mountain Dog",
+                    scientificName = "Canis familiaris",
+                    confidenceScore = 99,
+                    selected = true
+                )
+            )
+        )
+        val repository = BioRepository(
+            gateway = gateway,
+            speciesRepository = SpeciesSourceRepository(FakeSpeciesSourceGateway())
+        )
+
+        val entry = repository.enrichBioRecordSpecies("record-to-enrich")
+
+        assertEquals("record-to-enrich", gateway.upsertedSpeciesProfile?.bioRecordId)
+        assertEquals("Canis familiaris", gateway.upsertedSpeciesProfile?.scientificName)
+        assertEquals("Animalia > Chordata > Mammalia", entry?.taxonomy)
+        assertEquals("Domestic environments.", entry?.habitat)
     }
 
     @Test
@@ -202,11 +267,13 @@ class BioRepositoryTest {
 
     private fun sampleRow(
         id: String = "record-1",
-        locationLabel: String = "Mossy Creek"
+        locationLabel: String = "Mossy Creek",
+        speciesProfileId: String? = null
     ): BioRecordRow {
         return BioRecordRow(
             id = id,
             userId = "user-1",
+            speciesProfileId = speciesProfileId,
             photoUrl = "https://example.com/photo.jpg",
             thumbnailUrl = null,
             sourceType = "camera",
@@ -226,7 +293,8 @@ class BioRepositoryTest {
         private val rows: List<BioRecordRow>,
         private val userId: String? = "user-1",
         private val signedUrl: String = "https://signed.example/default.jpg",
-        private val identificationCandidates: List<IdentificationCandidateRow> = emptyList()
+        private val identificationCandidates: List<IdentificationCandidateRow> = emptyList(),
+        private val speciesProfiles: List<SpeciesProfileRow> = emptyList()
     ) : BioRecordGateway {
         var uploadedPath: String? = null
         var uploadedBytes: ByteArray? = null
@@ -235,6 +303,8 @@ class BioRepositoryTest {
         var insertedImageMetadata: NewImageMetadata? = null
         var identifiedRecordId: String? = null
         var signedPhotoPath: String? = null
+        var upsertedSpeciesProfile: BioRecordSpeciesProfileUpsert? = null
+        var upsertedSpeciesProfileRow: SpeciesProfileRow? = null
 
         override suspend fun fetchBioRecords(limit: Int?): List<BioRecordRow> {
             return limit?.let { rows.take(it) } ?: rows
@@ -242,6 +312,10 @@ class BioRepositoryTest {
 
         override suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow> {
             return identificationCandidates
+        }
+
+        override suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
+            return speciesProfiles + listOfNotNull(upsertedSpeciesProfileRow)
         }
 
         override suspend fun currentUserId(): String? = userId
@@ -257,6 +331,7 @@ class BioRepositoryTest {
             return BioRecordRow(
                 id = draft.id,
                 userId = draft.userId,
+                speciesProfileId = null,
                 photoUrl = draft.photoUrl,
                 thumbnailUrl = null,
                 sourceType = draft.sourceType,
@@ -281,9 +356,63 @@ class BioRepositoryTest {
             return identificationCandidates.filter { it.bioRecordId == recordId }
         }
 
+        override suspend fun upsertBioRecordSpeciesProfile(profile: BioRecordSpeciesProfileUpsert): SpeciesProfileRow {
+            upsertedSpeciesProfile = profile
+            return SpeciesProfileRow(
+                id = "upserted-species",
+                commonName = profile.commonName,
+                scientificName = profile.scientificName,
+                taxonomy = profile.taxonomy,
+                habitat = profile.habitat,
+                diet = profile.diet,
+                lifespan = profile.lifespan,
+                distribution = profile.distribution,
+                conservationStatus = profile.conservationStatus,
+                sourceApi = profile.sourceApi,
+                lastEnrichedAt = "2026-05-16T00:00:00Z"
+            ).also {
+                upsertedSpeciesProfileRow = it
+            }
+        }
+
         override suspend fun createSignedPhotoUrl(path: String): String {
             signedPhotoPath = path
             return signedUrl
+        }
+    }
+
+    private class FakeSpeciesSourceGateway : SpeciesSourceGateway {
+        override suspend fun searchGbifSpecies(query: String): List<GbifSpeciesSearchRow> {
+            return listOf(
+                GbifSpeciesSearchRow(
+                    key = 5219173,
+                    scientificName = "Canis familiaris",
+                    canonicalName = "Canis familiaris",
+                    rank = "SPECIES",
+                    taxonomicStatus = "ACCEPTED",
+                    kingdom = "Animalia",
+                    phylum = "Chordata",
+                    className = "Mammalia",
+                    order = "Carnivora",
+                    family = "Canidae",
+                    genus = "Canis"
+                )
+            )
+        }
+
+        override suspend fun previewSpeciesEnrichment(species: SpeciesSearchResult): SpeciesEnrichmentPreview {
+            return SpeciesEnrichmentPreview(
+                commonName = "Bernese Mountain Dog",
+                scientificName = "Canis familiaris",
+                taxonomy = "Animalia > Chordata > Mammalia",
+                habitat = "Domestic environments.",
+                diet = "Omnivorous domestic diet.",
+                lifespan = "7 to 10 years.",
+                distribution = "Worldwide as a domestic breed.",
+                conservationStatus = "least concern",
+                sourceApi = "GBIF, Wikipedia",
+                lastEnrichedDate = "May 16, 2026"
+            )
         }
     }
 }
