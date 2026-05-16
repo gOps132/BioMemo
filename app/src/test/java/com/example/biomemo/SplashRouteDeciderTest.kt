@@ -2,6 +2,7 @@ package com.example.biomemo
 
 import com.example.biomemo.screens.splash.SplashDestination
 import com.example.biomemo.screens.splash.SplashRouteDecider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -44,5 +45,26 @@ class SplashRouteDeciderTest {
 
         assertEquals(SplashDestination.DASHBOARD, destination)
         assertEquals(listOf("restore", "check"), events)
+    }
+
+    @Test
+    fun routesToLoginWhenSessionRestoreFails() = runBlocking {
+        val decider = SplashRouteDecider(
+            restorePersistedSession = { error("restore failed") },
+            hasActiveSession = { true }
+        )
+
+        assertEquals(SplashDestination.LOGIN, decider.decideDestination())
+    }
+
+    @Test
+    fun routesToLoginWhenSessionRestoreTimesOut() = runBlocking {
+        val decider = SplashRouteDecider(
+            restorePersistedSession = { delay(50) },
+            hasActiveSession = { true },
+            restoreTimeoutMs = 1
+        )
+
+        assertEquals(SplashDestination.LOGIN, decider.decideDestination())
     }
 }

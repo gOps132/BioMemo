@@ -60,6 +60,20 @@ class LoginPresenterTest {
         assertTrue(view.navigatedDashboardUser == null)
     }
 
+    @Test
+    fun loginWithoutUserDoesNotNavigateToDashboard() = runBlocking {
+        val view = FakeLoginView()
+        val presenter = LoginPresenter(
+            view,
+            FakeLoginModel(SupabaseAuthResult.Success(null))
+        )
+
+        presenter.onLoginClicked("trail@biomemo.app", "secret123")
+
+        assertEquals("Sign-in finished without an active session. Please try again.", view.lastError)
+        assertTrue(view.navigatedDashboardUser == null)
+    }
+
     private class FakeLoginView : LoginContract.View {
         var lastError: String? = null
         var successUser: String? = null

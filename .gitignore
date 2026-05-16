@@ -11,6 +11,7 @@
 /build
 /captures
 supabase/.temp/
+supabase/.env.local
 .externalNativeBuild
 .cxx
 local.properties
@@ -32,6 +33,9 @@ mcp.json
 .mcp.json
 CLAUDE.md
 GEMINI.md
+AGENTS.md
+Agents.md
+agents.md
 .cursorignore
 .claudeignore
 .codexignore

@@ -1,8 +1,10 @@
 package com.example.biomemo.screens.search
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
+import android.text.TextUtils
 import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.EditText
@@ -14,6 +16,7 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
+import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
@@ -24,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 class SearchActivity : AppCompatActivity() {
     private val bioRepository = BioRepository()
@@ -31,10 +36,13 @@ class SearchActivity : AppCompatActivity() {
     private val presenter = SearchPresenter(
         loadBioRecords = { bioRepository.getAllEntries() },
         searchBioRecords = { query -> bioRepository.search(query) },
-        searchSpecies = { query -> speciesRepository.searchSpecies(query) }
+        searchSpecies = { query -> speciesRepository.searchSpecies(query) },
+        loadSuggestions = { bioRepository.getSearchSuggestions() }
     )
     private val searchScope = CoroutineScope(Dispatchers.Main + Job())
     private var searchJob: Job? = null
+    private lateinit var searchField: EditText
+    private var observedBioRecordVersion = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +50,7 @@ class SearchActivity : AppCompatActivity() {
 
         MainBottomNav.setup(this, MainNavDestination.SEARCH, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
 
-        val searchField = findViewById<EditText>(R.id.edittextSearch)
+        searchField = findViewById(R.id.edittextSearch)
         searchField.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -53,10 +61,18 @@ class SearchActivity : AppCompatActivity() {
         runSearch("")
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::searchField.isInitialized && observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
+            runSearch(searchField.text?.toString().orEmpty())
+        }
+    }
+
     private fun runSearch(query: String) {
         searchJob?.cancel()
         searchJob = searchScope.launch {
             renderState(presenter.search(query))
+            observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
         }
     }
 
@@ -69,6 +85,11 @@ class SearchActivity : AppCompatActivity() {
             "${state.bioRecords.size} BioRecords"
         }
         container.removeAllViews()
+
+        if (state.query.isEmpty() && state.suggestions.isNotEmpty()) {
+            container.addView(sectionLabel("Suggestions"))
+            container.addView(suggestionRow(state.suggestions))
+        }
 
         if (state.bioRecords.isNotEmpty()) {
             container.addView(sectionLabel("BioRecords"))
@@ -101,7 +122,9 @@ class SearchActivity : AppCompatActivity() {
         val card = resultCard(clickable = true).apply {
             setOnClickListener { openBioRecord(entry) }
         }
-        card.addView(thumbnail(entry))
+        val thumbnail = thumbnail(entry)
+        card.addView(thumbnail)
+        loadThumbnail(entry, thumbnail)
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -132,6 +155,30 @@ class SearchActivity : AppCompatActivity() {
             addView(text("${species.sourceName} · ${species.taxonomicStatus.displayStatus()}", 12, R.color.bio_ink_muted, false))
         })
         return card
+    }
+
+    private fun suggestionRow(suggestions: List<String>): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(10) }
+            suggestions.take(4).forEach { suggestion ->
+                addView(text(suggestion, 13, R.color.bio_forest_700, true).apply {
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                    setBackgroundResource(R.drawable.bg_chip)
+                    setPadding(dp(12), dp(7), dp(12), dp(7))
+                    setOnClickListener { searchField.setText(suggestion) }
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                    ).apply { rightMargin = dp(8) }
+                })
+            }
+        }
     }
 
     private fun openSpeciesReference(species: SpeciesSearchResult) {
@@ -182,6 +229,27 @@ class SearchActivity : AppCompatActivity() {
             Intent(this, BioRecordDetailActivity::class.java)
                 .putExtra(BioRecordDetailActivity.EXTRA_ENTRY_ID, entry.id)
         )
+    }
+
+    private fun loadThumbnail(entry: BioEntry, imageView: ImageView) {
+        if (entry.photoUrl.isBlank()) return
+        searchScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = if (entry.photoUrl.startsWith("http")) {
+                        entry.photoUrl
+                    } else {
+                        bioRepository.createSignedPhotoUrl(entry.photoUrl)
+                    }
+                    URL(url).openStream().use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
+            if (bitmap != null) {
+                imageView.setPadding(0, 0, 0, 0)
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+        }
     }
 
     private fun thumbnail(entry: BioEntry): ImageView = ImageView(this).apply {

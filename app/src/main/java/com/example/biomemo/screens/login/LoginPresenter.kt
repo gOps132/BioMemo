@@ -15,7 +15,12 @@ class LoginPresenter(
 
         when (val result = model.authenticate(user, pass)) {
             is SupabaseAuthResult.Success -> {
-                val email = result.user?.email ?: user
+                val authUser = result.user
+                if (authUser == null) {
+                    view.showError("Sign-in finished without an active session. Please try again.")
+                    return
+                }
+                val email = authUser.email ?: user
                 view.showLoginSuccess(email)
                 view.navigateToDashboard(email)
             }

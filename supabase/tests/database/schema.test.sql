@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(18);
 
 select ok(to_regclass('public.profiles') is not null, 'profiles table exists');
 select ok(to_regclass('public.species_profiles') is not null, 'species_profiles table exists');
@@ -25,6 +25,16 @@ select ok(to_regprocedure('public.handle_new_user()') is not null, 'handle_new_u
 select ok(to_regprocedure('public.normalize_username(text)') is not null, 'normalize_username function exists');
 select ok(to_regprocedure('public.resolve_login_identifier(text)') is not null, 'resolve_login_identifier function exists');
 select ok(to_regclass('public.profiles_username_unique') is not null, 'profiles username unique index exists');
+select ok(
+  not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'field_name'
+  ),
+  'profiles field_name column is dropped'
+);
 
 select * from finish();
 

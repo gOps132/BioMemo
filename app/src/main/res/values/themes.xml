@@ -1,6 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.BioMemo" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:fontFamily">sans</item>
+        <!-- Changed from "sans" to "sans-serif" to fix a Layout Preview render issue
+             where the renderer fails to resolve "sans" and crashes with a NullPointerException
+             related to assetStream. -->
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/bio_forest_900</item>
         <item name="android:navigationBarColor">@color/bio_forest_900</item>

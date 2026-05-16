@@ -1,11 +1,13 @@
 package com.example.biomemo.screens.species
 
+import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
@@ -71,9 +73,27 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            container.addView(text(value, 15, R.color.bio_ink, false))
+            if (label in ENRICHMENT_LOADING_LABELS && value.isPendingEnrichment()) {
+                container.addView(loadingValue())
+            } else {
+                container.addView(text(value, 15, R.color.bio_ink, false))
+            }
         }
     }
+
+    private fun loadingValue(): ProgressBar {
+        return ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = true
+            indeterminateTintList = ColorStateList.valueOf(getColor(R.color.bio_forest_700))
+            layoutParams = LinearLayout.LayoutParams(dp(150), dp(8)).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(6)
+            }
+            contentDescription = "Loading enrichment"
+        }
+    }
+
+    private fun String.isPendingEnrichment(): Boolean = trim().equals(NOT_ENRICHED, ignoreCase = true)
 
     private fun renderPhoto(detail: SpeciesReferenceDetail) {
         val imageView = findViewById<ImageView>(R.id.imageviewSpeciesReferencePhoto)
@@ -133,5 +153,15 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
         const val EXTRA_ORDER = "order"
         const val EXTRA_FAMILY = "family"
         const val EXTRA_GENUS = "genus"
+        private const val NOT_ENRICHED = "Not enriched yet"
+        private val ENRICHMENT_LOADING_LABELS = setOf(
+            "Habitat",
+            "Diet",
+            "Lifespan",
+            "Distribution",
+            "Conservation status",
+            "Photo source",
+            "Last enriched"
+        )
     }
 }

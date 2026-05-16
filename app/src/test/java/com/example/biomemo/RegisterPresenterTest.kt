@@ -12,20 +12,20 @@ import org.junit.Test
 
 class RegisterPresenterTest {
     @Test
-    fun successfulRegistrationPassesEmailAndFieldNameThenReturnsToLogin() = runBlocking {
+    fun successfulRegistrationPassesEmailAndUsernameThenReturnsToLogin() = runBlocking {
         val view = FakeRegisterView()
         val model = FakeRegisterModel(SupabaseAuthResult.Success(AuthUser("user-1", "field@biomemo.app")))
         val presenter = RegisterPresenter(view, model)
 
         presenter.onRegisterClicked(
             email = "field@biomemo.app",
-            fieldName = "Field Notes",
+            username = "fieldnotes",
             pass = "secret123",
             rePass = "secret123"
         )
 
         assertEquals("field@biomemo.app", model.email)
-        assertEquals("Field Notes", model.fieldName)
+        assertEquals("fieldnotes", model.username)
         assertEquals("Registration successful", view.successMessage)
         assertTrue(view.navigatedLogin)
     }
@@ -40,7 +40,7 @@ class RegisterPresenterTest {
 
         presenter.onRegisterClicked(
             email = "field@biomemo.app",
-            fieldName = "Field Notes",
+            username = "fieldnotes",
             pass = "secret123",
             rePass = "secret123"
         )
@@ -50,7 +50,7 @@ class RegisterPresenterTest {
     }
 
     @Test
-    fun emptyEmailFieldNameOrPasswordShowsValidationError() = runBlocking {
+    fun emptyEmailUsernameOrPasswordShowsValidationError() = runBlocking {
         val view = FakeRegisterView()
         val presenter = RegisterPresenter(view, FakeRegisterModel())
 
@@ -73,11 +73,11 @@ class RegisterPresenterTest {
         private val result: SupabaseAuthResult = SupabaseAuthResult.Success(AuthUser("user-1", "field@biomemo.app"))
     ) : RegisterAuthModel {
         var email: String? = null
-        var fieldName: String? = null
+        var username: String? = null
 
-        override suspend fun registerUser(email: String, password: String, fieldName: String): SupabaseAuthResult {
+        override suspend fun registerUser(email: String, password: String, username: String): SupabaseAuthResult {
             this.email = email
-            this.fieldName = fieldName
+            this.username = username
             return result
         }
 
