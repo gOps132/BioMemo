@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
+import android.text.TextUtils
 import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.EditText
@@ -34,10 +35,12 @@ class SearchActivity : AppCompatActivity() {
     private val presenter = SearchPresenter(
         loadBioRecords = { bioRepository.getAllEntries() },
         searchBioRecords = { query -> bioRepository.search(query) },
-        searchSpecies = { query -> speciesRepository.searchSpecies(query) }
+        searchSpecies = { query -> speciesRepository.searchSpecies(query) },
+        loadSuggestions = { bioRepository.getSearchSuggestions() }
     )
     private val searchScope = CoroutineScope(Dispatchers.Main + Job())
     private var searchJob: Job? = null
+    private lateinit var searchField: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +48,7 @@ class SearchActivity : AppCompatActivity() {
 
         MainBottomNav.setup(this, MainNavDestination.SEARCH, intent.getStringExtra(MainBottomNav.EXTRA_USERNAME))
 
-        val searchField = findViewById<EditText>(R.id.edittextSearch)
+        searchField = findViewById(R.id.edittextSearch)
         searchField.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -72,6 +75,11 @@ class SearchActivity : AppCompatActivity() {
             "${state.bioRecords.size} BioRecords"
         }
         container.removeAllViews()
+
+        if (state.query.isEmpty() && state.suggestions.isNotEmpty()) {
+            container.addView(sectionLabel("Suggestions"))
+            container.addView(suggestionRow(state.suggestions))
+        }
 
         if (state.bioRecords.isNotEmpty()) {
             container.addView(sectionLabel("BioRecords"))
@@ -137,6 +145,30 @@ class SearchActivity : AppCompatActivity() {
             addView(text("${species.sourceName} · ${species.taxonomicStatus.displayStatus()}", 12, R.color.bio_ink_muted, false))
         })
         return card
+    }
+
+    private fun suggestionRow(suggestions: List<String>): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(10) }
+            suggestions.take(4).forEach { suggestion ->
+                addView(text(suggestion, 13, R.color.bio_forest_700, true).apply {
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                    setBackgroundResource(R.drawable.bg_chip)
+                    setPadding(dp(12), dp(7), dp(12), dp(7))
+                    setOnClickListener { searchField.setText(suggestion) }
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                    ).apply { rightMargin = dp(8) }
+                })
+            }
+        }
     }
 
     private fun openSpeciesReference(species: SpeciesSearchResult) {

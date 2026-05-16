@@ -138,6 +138,36 @@ class BioRepositoryTest {
     }
 
     @Test
+    fun searchSuggestionsUseCachedRecordsCandidatesAndSpeciesProfiles() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-suggestions", locationLabel = "Mossy Creek")),
+                identificationCandidates = listOf(
+                    IdentificationCandidateRow(
+                        bioRecordId = "record-with-suggestions",
+                        commonName = "Asian common toad",
+                        scientificName = "Duttaphrynus melanostictus",
+                        selected = true
+                    )
+                ),
+                speciesProfiles = listOf(
+                    SpeciesProfileRow(
+                        id = "species-toad",
+                        commonName = "Asian common toad",
+                        scientificName = "Duttaphrynus melanostictus"
+                    )
+                )
+            )
+        )
+
+        val suggestions = repository.getSearchSuggestions()
+
+        assertTrue(suggestions.contains("Mossy Creek"))
+        assertTrue(suggestions.contains("Asian common toad"))
+        assertTrue(suggestions.contains("Duttaphrynus melanostictus"))
+    }
+
+    @Test
     fun statsSummarizeFetchedEntries() = runBlocking {
         val repository = BioRepository(
             FakeBioRecordGateway(

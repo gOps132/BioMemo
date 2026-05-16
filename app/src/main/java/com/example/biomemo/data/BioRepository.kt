@@ -156,21 +156,28 @@ data class BioRecordSpeciesProfileUpsert(
 class BioRepository(
     private val gateway: BioRecordGateway = SupabaseBioRecordGateway(),
     private val speciesRepository: SpeciesSourceRepository = SpeciesSourceRepository(),
+    private val cache: BioRepositoryCache = if (gateway is SupabaseBioRecordGateway) {
+        BioRepositoryCache.shared
+    } else {
+        BioRepositoryCache()
+    },
     private val recordIdProvider: () -> String = { UUID.randomUUID().toString() }
 ) {
     suspend fun getAllEntries(): List<BioEntry> {
-        val rows = gateway.fetchBioRecords()
+        cache.entries?.let { return it }
+        val rows = fetchBioRecords()
         if (rows.isEmpty()) return emptyList()
-        val candidatesByRecord = gateway.fetchIdentificationCandidates().groupBy { it.bioRecordId }
-        val speciesProfilesById = gateway.fetchSpeciesProfiles().associateBy { it.id }
+        val candidatesByRecord = fetchIdentificationCandidates().groupBy { it.bioRecordId }
+        val speciesProfilesById = fetchSpeciesProfiles().associateBy { it.id }
         return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
+            .also { cache.entries = it }
     }
 
     suspend fun getRecentEntries(limit: Int = 2): List<BioEntry> {
-        val rows = gateway.fetchBioRecords(limit)
+        val rows = fetchBioRecords(limit)
         if (rows.isEmpty()) return emptyList()
-        val candidatesByRecord = gateway.fetchIdentificationCandidates().groupBy { it.bioRecordId }
-        val speciesProfilesById = gateway.fetchSpeciesProfiles().associateBy { it.id }
+        val candidatesByRecord = fetchIdentificationCandidates().groupBy { it.bioRecordId }
+        val speciesProfilesById = fetchSpeciesProfiles().associateBy { it.id }
         return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
     }
 
@@ -213,12 +220,26 @@ class BioRepository(
         }
     }
 
+    suspend fun getSearchSuggestions(limit: Int = 8): List<String> {
+        val entries = getAllEntries()
+        val candidates = fetchIdentificationCandidates()
+        val profiles = fetchSpeciesProfiles()
+        return (entries.flatMap { listOf(it.commonName, it.scientificName, it.location) } +
+            candidates.flatMap { listOfNotNull(it.commonName, it.scientificName) } +
+            profiles.flatMap { listOf(it.commonName, it.scientificName, it.taxonomy.orEmpty()) })
+            .map { it.trim() }
+            .filter { it.isNotBlank() && it != UNIDENTIFIED_COMMON_NAME && it != AWAITING_IDENTIFICATION }
+            .distinctBy { it.lowercase() }
+            .take(limit)
+    }
+
     suspend fun createDraftUploadRecord(photo: BioRecordPhotoUpload): BioEntry {
         val userId = gateway.currentUserId() ?: error("Sign in before uploading BioRecord photos.")
         val recordId = recordIdProvider()
         val photoPath = BioRecordPhotoPath.forOriginal(userId, recordId, photo.contentType)
 
         gateway.uploadBioRecordPhoto(photoPath, photo.bytes, photo.contentType)
+        invalidateRecords()
         val insertedRow = gateway.insertBioRecordDraft(
             NewBioRecordDraft(
                 id = recordId,
@@ -244,14 +265,22 @@ class BioRepository(
             )
         )
         val candidates = runCatching { gateway.identifyBioRecordImage(recordId) }.getOrDefault(emptyList())
+        if (candidates.isNotEmpty()) cache.identificationCandidates = null
         val bestCandidate = candidates.bestCandidate()
         val speciesProfile = enrichCandidate(recordId, bestCandidate)
         return insertedRow.toBioEntry(bestCandidate, speciesProfile)
     }
 
     suspend fun enrichBioRecordSpecies(recordId: String): BioEntry? {
-        val row = gateway.fetchBioRecords().firstOrNull { it.id == recordId } ?: return null
-        val candidate = gateway.fetchIdentificationCandidates()
+        val row = fetchBioRecords().firstOrNull { it.id == recordId } ?: return null
+        val existingProfile = row.speciesProfileId?.let { id -> fetchSpeciesProfiles().firstOrNull { it.id == id } }
+        if (existingProfile != null) {
+            val candidate = fetchIdentificationCandidates()
+                .filter { it.bioRecordId == recordId }
+                .bestCandidate()
+            return row.toBioEntry(candidate, existingProfile)
+        }
+        val candidate = fetchIdentificationCandidates()
             .filter { it.bioRecordId == recordId }
             .bestCandidate()
             ?: return row.toBioEntry(null, null)
@@ -261,15 +290,25 @@ class BioRepository(
 
     suspend fun createSignedPhotoUrl(path: String): String {
         require(path.isNotBlank()) { "Photo path is missing." }
+        cache.signedPhotoUrls[path]
+            ?.takeIf { it.isFresh() }
+            ?.let { return it.value }
         return gateway.createSignedPhotoUrl(path)
+            .also { cache.signedPhotoUrls[path] = CachedValue(it) }
     }
 
     private suspend fun enrichCandidate(recordId: String, candidate: IdentificationCandidateRow?): SpeciesProfileRow? {
         if (candidate == null || candidate.scientificName == AWAITING_IDENTIFICATION) return null
+        cachedSpeciesProfileFor(candidate)?.let { profile ->
+            linkCachedSpeciesProfile(recordId, candidate, profile)?.let { return it }
+        }
         val species = runCatching {
             speciesRepository.searchSpecies(candidate.scientificName).firstOrNull()
                 ?: candidate.commonName?.let { speciesRepository.searchSpecies(it).firstOrNull() }
         }.getOrNull() ?: return null
+        cachedSpeciesProfileFor(species)?.let { profile ->
+            linkCachedSpeciesProfile(recordId, candidate, profile)?.let { return it }
+        }
         val enrichment = runCatching { speciesRepository.previewEnrichment(species) }.getOrNull() ?: return null
         return runCatching {
             gateway.upsertBioRecordSpeciesProfile(
@@ -287,6 +326,70 @@ class BioRepository(
                 )
             )
         }.getOrNull()
+            ?.also { profile ->
+                cache.speciesProfiles = (fetchSpeciesProfiles().filterNot { it.id == profile.id } + profile)
+                invalidateRecords()
+            }
+    }
+
+    private suspend fun linkCachedSpeciesProfile(
+        recordId: String,
+        candidate: IdentificationCandidateRow,
+        profile: SpeciesProfileRow
+    ): SpeciesProfileRow? {
+        return runCatching {
+            gateway.upsertBioRecordSpeciesProfile(
+                BioRecordSpeciesProfileUpsert(
+                    bioRecordId = recordId,
+                    commonName = profile.commonName,
+                    scientificName = profile.scientificName,
+                    taxonomy = profile.taxonomy,
+                    habitat = profile.habitat,
+                    diet = profile.diet,
+                    lifespan = profile.lifespan,
+                    distribution = profile.distribution,
+                    conservationStatus = profile.conservationStatus,
+                    sourceApi = profile.sourceApi ?: "Cached species profile"
+                )
+            )
+        }.getOrNull()
+            ?.also { linkedProfile ->
+                cache.speciesProfiles = (fetchSpeciesProfiles().filterNot { it.id == linkedProfile.id } + linkedProfile)
+                invalidateRecords()
+            }
+            ?: profile.takeIf { candidate.matchesSpeciesProfile(it) }
+    }
+
+    private suspend fun cachedSpeciesProfileFor(candidate: IdentificationCandidateRow): SpeciesProfileRow? {
+        return fetchSpeciesProfiles().firstOrNull { candidate.matchesSpeciesProfile(it) }
+    }
+
+    private suspend fun cachedSpeciesProfileFor(species: SpeciesSearchResult): SpeciesProfileRow? {
+        return fetchSpeciesProfiles().firstOrNull { profile ->
+            profile.scientificName.sameSpeciesName(species.scientificName) ||
+                profile.scientificName.sameSpeciesName(species.canonicalName) ||
+                profile.commonName.sameSpeciesName(species.commonName.orEmpty())
+        }
+    }
+
+    private suspend fun fetchBioRecords(limit: Int? = null): List<BioRecordRow> {
+        val rows = cache.bioRecords ?: gateway.fetchBioRecords().also { cache.bioRecords = it }
+        return limit?.let { rows.take(it) } ?: rows
+    }
+
+    private suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow> {
+        return cache.identificationCandidates
+            ?: gateway.fetchIdentificationCandidates().also { cache.identificationCandidates = it }
+    }
+
+    private suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
+        return cache.speciesProfiles
+            ?: gateway.fetchSpeciesProfiles().also { cache.speciesProfiles = it }
+    }
+
+    private fun invalidateRecords() {
+        cache.bioRecords = null
+        cache.entries = null
     }
 
     private fun BioRecordRow.toBioEntry(candidate: IdentificationCandidateRow? = null, speciesProfile: SpeciesProfileRow? = null): BioEntry {
@@ -353,6 +456,46 @@ class BioRepository(
         const val NOT_ENRICHED = "Not enriched yet"
         val DISPLAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
     }
+}
+
+class BioRepositoryCache {
+    var bioRecords: List<BioRecordRow>? = null
+    var identificationCandidates: List<IdentificationCandidateRow>? = null
+    var speciesProfiles: List<SpeciesProfileRow>? = null
+    var entries: List<BioEntry>? = null
+    val signedPhotoUrls: MutableMap<String, CachedValue<String>> = mutableMapOf()
+
+    companion object {
+        val shared = BioRepositoryCache()
+    }
+}
+
+data class CachedValue<T>(
+    val value: T,
+    val cachedAtMillis: Long = System.currentTimeMillis()
+) {
+    fun isFresh(maxAgeMillis: Long = 50 * 60 * 1000L): Boolean {
+        return System.currentTimeMillis() - cachedAtMillis < maxAgeMillis
+    }
+}
+
+private fun IdentificationCandidateRow.matchesSpeciesProfile(profile: SpeciesProfileRow): Boolean {
+    return scientificName.sameSpeciesName(profile.scientificName) ||
+        commonName.orEmpty().sameSpeciesName(profile.commonName)
+}
+
+private fun String.sameSpeciesName(other: String): Boolean {
+    val left = speciesNameKey()
+    val right = other.speciesNameKey()
+    return left.isNotBlank() && right.isNotBlank() && (left == right || left.startsWith(right) || right.startsWith(left))
+}
+
+private fun String.speciesNameKey(): String {
+    return trim()
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
 }
 
 private fun String?.presentOr(fallback: String): String = this?.takeIf { it.isNotBlank() } ?: fallback
