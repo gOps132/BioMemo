@@ -123,6 +123,18 @@ class SupabaseAuthRepositoryTest {
     }
 
     @Test
+    fun signOutClearsLocalSessionWhenGatewaySignOutFails() = runBlocking {
+        val gateway = FakeAuthGateway(signOutFailure = IllegalStateException("Connection reset"))
+        val repository = SupabaseAuthRepository(gateway)
+
+        val result = repository.signOut()
+
+        assertTrue(result is SupabaseAuthResult.Success)
+        assertTrue(gateway.signOutCalled)
+        assertTrue(gateway.clearLocalSessionCalled)
+    }
+
+    @Test
     fun restorePersistedSessionDelegatesToGateway() = runBlocking {
         val gateway = FakeAuthGateway()
         val repository = SupabaseAuthRepository(gateway)
@@ -139,7 +151,8 @@ private class FakeAuthGateway(
     private val resolvedLogins: Map<String, String> = emptyMap(),
     private val activeSession: Boolean = false,
     private val currentUser: AuthUser? = null,
-    private val failure: Throwable? = null
+    private val failure: Throwable? = null,
+    private val signOutFailure: Throwable? = null
 ) : SupabaseAuthGateway {
     var signUpCalled = false
     var signUpEmail: String? = null
@@ -148,6 +161,8 @@ private class FakeAuthGateway(
     var signInCalled = false
     var googleSignInCalled = false
     var restorePersistedSessionCalled = false
+    var signOutCalled = false
+    var clearLocalSessionCalled = false
     var googleSignInRedirectUrl: String? = null
     var signInEmail: String? = null
     var signInPassword: String? = null
@@ -186,7 +201,14 @@ private class FakeAuthGateway(
         return resolvedLogins[identifier]
     }
 
-    override suspend fun signOut() = Unit
+    override suspend fun signOut() {
+        signOutCalled = true
+        signOutFailure?.let { throw it }
+    }
+
+    override suspend fun clearLocalSession() {
+        clearLocalSessionCalled = true
+    }
 
     override fun hasActiveSession(): Boolean = activeSession
 

@@ -31,6 +31,7 @@ interface SupabaseAuthGateway {
     suspend fun restorePersistedSession()
     suspend fun resolveLoginEmail(identifier: String): String?
     suspend fun signOut()
+    suspend fun clearLocalSession()
     fun hasActiveSession(): Boolean
     fun currentUser(): AuthUser?
 }
@@ -82,9 +83,12 @@ class SupabaseAuthRepository(
     }
 
     suspend fun signOut(): SupabaseAuthResult {
-        return runAuthCall {
+        return try {
             gateway.signOut()
-            null
+            SupabaseAuthResult.Success(null)
+        } catch (_: Throwable) {
+            runCatching { gateway.clearLocalSession() }
+            SupabaseAuthResult.Success(null)
         }
     }
 
@@ -203,6 +207,10 @@ class SupabaseAuthSdkGateway(
 
     override suspend fun signOut() {
         client.auth.signOut()
+    }
+
+    override suspend fun clearLocalSession() {
+        client.auth.clearSession()
     }
 
     override fun hasActiveSession(): Boolean {

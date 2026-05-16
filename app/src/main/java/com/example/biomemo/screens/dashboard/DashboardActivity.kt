@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioStats
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
@@ -41,11 +42,17 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
         MainBottomNav.setup(this, MainNavDestination.HOME, currentUsername)
 
         bioScope.launch {
-            val stats = bioRepository.getStats()
+            val (stats, recentEntries) = runCatching {
+                withContext(Dispatchers.IO) {
+                    bioRepository.getStats() to bioRepository.getRecentEntries(3)
+                }
+            }.getOrElse {
+                BioStats(sightings = 0, species = 0, streak = "0d") to emptyList()
+            }
             findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
             findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
             findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
-            renderRecentBioRecords(bioRepository.getRecentEntries(3))
+            renderRecentBioRecords(recentEntries)
         }
     }
 
