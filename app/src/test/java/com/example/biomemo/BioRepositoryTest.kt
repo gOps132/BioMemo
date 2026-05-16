@@ -16,6 +16,10 @@ import com.example.biomemo.data.SpeciesProfileRow
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceGateway
 import com.example.biomemo.data.SpeciesSourceRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
@@ -40,6 +44,56 @@ class BioRepositoryTest {
         assertEquals("GPS coordinates available", entry.metadataAvailability)
         assertEquals("camera", entry.sourceType)
         assertEquals("Pending identification", entry.sourceApi)
+    }
+
+    @Test
+    fun mapsJoinedSpeciesProfileToDisplayEntries() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                listOf(
+                    sampleRow(
+                        speciesProfileId = "species-1",
+                        speciesProfile = sampleSpeciesProfile()
+                    )
+                )
+            )
+        )
+
+        val entry = repository.getAllEntries().single()
+
+        assertEquals("Philippine Eagle", entry.commonName)
+        assertEquals("Pithecophaga jefferyi", entry.scientificName)
+        assertEquals("Animalia · Chordata · Aves", entry.taxonomy)
+        assertEquals("Primary and secondary forest.", entry.habitat)
+        assertEquals("Birds, reptiles, and mammals.", entry.diet)
+        assertEquals("30 to 60 years.", entry.lifespan)
+        assertEquals("Philippines.", entry.distribution)
+        assertEquals("critically endangered", entry.conservationStatus)
+        assertEquals("Gemini image identification", entry.sourceApi)
+        assertEquals("May 6, 2026", entry.lastEnrichedDate)
+    }
+
+    @Test
+    fun observeEntryByIdMapsRealtimeRows() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-1")),
+                observedRows = listOf(
+                    sampleRow(id = "record-1"),
+                    sampleRow(
+                        id = "record-1",
+                        speciesProfileId = "species-1",
+                        speciesProfile = sampleSpeciesProfile()
+                    )
+                )
+            )
+        )
+
+        val entries = repository.observeEntryById("record-1").take(2).toList()
+
+        assertEquals("Unidentified organism", entries.first().commonName)
+        assertEquals("Philippine Eagle", entries.last().commonName)
+        assertEquals("Primary and secondary forest.", entries.last().habitat)
     }
 
     @Test
@@ -340,12 +394,14 @@ class BioRepositoryTest {
     private fun sampleRow(
         id: String = "record-1",
         locationLabel: String = "Mossy Creek",
-        speciesProfileId: String? = null
+        speciesProfileId: String? = null,
+        speciesProfile: SpeciesProfileRow? = null
     ): BioRecordRow {
         return BioRecordRow(
             id = id,
             userId = "user-1",
             speciesProfileId = speciesProfileId,
+            speciesProfile = speciesProfile,
             photoUrl = "https://example.com/photo.jpg",
             thumbnailUrl = null,
             sourceType = "camera",
@@ -361,8 +417,25 @@ class BioRepositoryTest {
         )
     }
 
+    private fun sampleSpeciesProfile(): SpeciesProfileRow {
+        return SpeciesProfileRow(
+            id = "species-1",
+            commonName = "Philippine Eagle",
+            scientificName = "Pithecophaga jefferyi",
+            taxonomy = "Animalia · Chordata · Aves",
+            habitat = "Primary and secondary forest.",
+            diet = "Birds, reptiles, and mammals.",
+            lifespan = "30 to 60 years.",
+            distribution = "Philippines.",
+            conservationStatus = "critically endangered",
+            sourceApi = "Gemini image identification",
+            lastEnrichedAt = "2026-05-06T09:45:00Z"
+        )
+    }
+
     private class FakeBioRecordGateway(
         private val rows: List<BioRecordRow>,
+        private val observedRows: List<BioRecordRow> = rows,
         private val userId: String? = "user-1",
         private val signedUrl: String = "https://signed.example/default.jpg",
         private val identificationCandidates: List<IdentificationCandidateRow> = emptyList(),
@@ -400,6 +473,14 @@ class BioRepositoryTest {
             deletedIdSet += ids
         }
 
+        override suspend fun fetchBioRecordById(id: String): BioRecordRow? {
+            return rows.firstOrNull { it.id == id }
+        }
+
+        override fun observeBioRecord(id: String): Flow<BioRecordRow> {
+            return observedRows.filter { it.id == id }.asFlow()
+        }
+
         override suspend fun currentUserId(): String? = userId
 
         override suspend fun uploadBioRecordPhoto(path: String, bytes: ByteArray, contentType: String) {
@@ -414,6 +495,7 @@ class BioRepositoryTest {
                 id = draft.id,
                 userId = draft.userId,
                 speciesProfileId = null,
+                speciesProfile = null,
                 photoUrl = draft.photoUrl,
                 thumbnailUrl = null,
                 sourceType = draft.sourceType,

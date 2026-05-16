@@ -14,7 +14,7 @@ object AppConfig {
 
     fun hasSupabaseConfig(): Boolean = !isMissing(supabaseUrl) && !isMissing(supabaseAnonKey)
     fun hasGoogleClientId(): Boolean = !isMissing(googleWebClientId)
-    fun canUseGoogleSignIn(): Boolean = hasGoogleClientId() && !isLocalSupabase
+    fun canUseGoogleSignIn(): Boolean = !isLocalSupabase
     fun hasAiIdentificationApiKey(): Boolean = !isMissing(aiIdentificationApiKey)
 
     fun isMissing(value: String?): Boolean {

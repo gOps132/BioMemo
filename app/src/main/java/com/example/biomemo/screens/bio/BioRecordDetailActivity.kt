@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
@@ -49,6 +50,11 @@ class BioRecordDetailActivity : AppCompatActivity() {
             if (shouldEnrich) {
                 repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
                     renderEntry(enrichedEntry, username)
+                }
+            }
+            bioScope.launch {
+                repository.observeEntryById(entryId).collectLatest { updatedEntry ->
+                    renderEntry(updatedEntry, username)
                 }
             }
         }
