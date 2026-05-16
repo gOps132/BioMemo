@@ -186,6 +186,44 @@ class SpeciesSourceRepositoryTest {
         assertEquals(0, gateway.calls)
     }
 
+    @Test
+    fun repeatedSearchUsesCache() = runBlocking {
+        val gateway = FakeSpeciesSourceGateway(
+            listOf(row(key = 2441176, canonicalName = "Giraffa camelopardalis", commonName = "Giraffe"))
+        )
+        val repository = SpeciesSourceRepository(gateway)
+
+        repository.searchSpecies("giraffe")
+        repository.searchSpecies(" giraffe ")
+
+        assertEquals(1, gateway.calls)
+    }
+
+    @Test
+    fun repeatedEnrichmentPreviewUsesCache() = runBlocking {
+        val gateway = FakeSpeciesSourceGateway(emptyList())
+        val repository = SpeciesSourceRepository(gateway)
+        val species = SpeciesSearchResult(
+            gbifUsageKey = 2441176,
+            scientificName = "Giraffa camelopardalis Linnaeus, 1758",
+            canonicalName = "Giraffa camelopardalis",
+            commonName = "Giraffe",
+            rank = "SPECIES",
+            taxonomicStatus = "ACCEPTED",
+            kingdom = "Animalia",
+            phylum = "Chordata",
+            className = "Mammalia",
+            order = "Artiodactyla",
+            family = "Giraffidae",
+            genus = "Giraffa"
+        )
+
+        repository.previewEnrichment(species)
+        repository.previewEnrichment(species)
+
+        assertEquals(1, gateway.enrichmentCalls)
+    }
+
     private fun row(
         key: Int,
         acceptedKey: Int? = null,
@@ -234,6 +272,7 @@ class SpeciesSourceRepositoryTest {
         private val rows: List<GbifSpeciesSearchRow>
     ) : SpeciesSourceGateway {
         var calls = 0
+        var enrichmentCalls = 0
 
         override suspend fun searchGbifSpecies(query: String): List<GbifSpeciesSearchRow> {
             calls += 1
@@ -241,7 +280,8 @@ class SpeciesSourceRepositoryTest {
         }
 
         override suspend fun previewSpeciesEnrichment(species: SpeciesSearchResult): SpeciesEnrichmentPreview {
-            return SpeciesEnrichmentPreview()
+            enrichmentCalls += 1
+            return SpeciesEnrichmentPreview(scientificName = species.scientificName)
         }
     }
 }

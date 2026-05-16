@@ -19,13 +19,15 @@ class SearchPresenterTest {
             searchSpecies = {
                 speciesCalls += 1
                 emptyList()
-            }
+            },
+            loadSuggestions = { listOf("Domestic Dog", "Ladybug") }
         )
 
         val state = presenter.search("   ")
 
         assertEquals(listOf("record-1"), state.bioRecords.map { it.id })
         assertTrue(state.speciesResults.isEmpty())
+        assertEquals(listOf("Domestic Dog", "Ladybug"), state.suggestions)
         assertEquals(0, speciesCalls)
         assertFalse(state.isSpeciesSearchAvailable)
     }

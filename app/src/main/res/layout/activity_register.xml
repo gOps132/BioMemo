@@ -17,8 +17,8 @@
             android:background="@drawable/bg_hero_gradient"
             android:gravity="bottom"
             android:orientation="vertical"
-            android:paddingLeft="24dp"
-            android:paddingRight="24dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
             android:paddingBottom="28dp">
             <TextView
                 android:id="@+id/textviewRegisterTitle"
@@ -43,9 +43,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingLeft="24dp"
+            android:paddingStart="24dp"
             android:paddingTop="26dp"
-            android:paddingRight="24dp"
+            android:paddingEnd="24dp"
             android:paddingBottom="28dp">
 
             <TextView
@@ -67,14 +67,14 @@
                 android:background="@drawable/bg_input_field"
                 android:hint="Enter your email"
                 android:inputType="textEmailAddress"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
                 android:textColor="@color/bio_ink"
                 android:textColorHint="#839487"
                 android:textSize="16sp" />
 
             <TextView
-                android:id="@+id/textviewRegisterFieldNameLabel"
+                android:id="@+id/textviewRegisterUsernameFieldLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
@@ -92,8 +92,8 @@
                 android:background="@drawable/bg_input_field"
                 android:hint="Choose a username"
                 android:inputType="text"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
                 android:textColor="@color/bio_ink"
                 android:textColorHint="#839487"
                 android:textSize="16sp" />
@@ -117,8 +117,8 @@
                 android:background="@drawable/bg_input_field"
                 android:hint="Create a password"
                 android:inputType="textPassword"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
                 android:textColor="@color/bio_ink"
                 android:textColorHint="#839487"
                 android:textSize="16sp" />
@@ -142,8 +142,8 @@
                 android:background="@drawable/bg_input_field"
                 android:hint="Re-enter your password"
                 android:inputType="textPassword"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
                 android:textColor="@color/bio_ink"
                 android:textColorHint="#839487"
                 android:textSize="16sp" />
@@ -164,7 +164,6 @@
                 android:layout_height="60dp"
                 android:layout_marginBottom="18dp"
                 android:background="@drawable/bg_button_primary"
-                android:backgroundTint="@null"
                 android:text="Create account"
                 android:textAllCaps="false"
                 android:textColor="@color/white"

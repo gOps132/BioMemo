@@ -47,7 +47,11 @@ class ProfileActivity : AppCompatActivity(), ProfileContract.View {
     }
 
     override fun logout() {
-        startActivity(Intent(this, LoginActivity::class.java))
+        startActivity(
+            Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        )
         finish()
     }
 

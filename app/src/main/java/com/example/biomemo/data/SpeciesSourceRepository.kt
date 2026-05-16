@@ -51,11 +51,18 @@ data class SpeciesEnrichmentPreview(
 )
 
 class SpeciesSourceRepository(
-    private val gateway: SpeciesSourceGateway = SupabaseSpeciesSourceGateway()
+    private val gateway: SpeciesSourceGateway = SupabaseSpeciesSourceGateway(),
+    private val cache: SpeciesSourceCache = if (gateway is SupabaseSpeciesSourceGateway) {
+        SpeciesSourceCache.shared
+    } else {
+        SpeciesSourceCache()
+    }
 ) {
     suspend fun searchSpecies(query: String): List<SpeciesSearchResult> {
         val cleanedQuery = query.trim()
         if (cleanedQuery.isEmpty()) return emptyList()
+        val cacheKey = cleanedQuery.normalized()
+        cache.searchResults[cacheKey]?.let { return it }
 
         return gateway.searchGbifSpecies(cleanedQuery)
             .filter { it.rank.equals(SPECIES_RANK, ignoreCase = true) }
@@ -66,10 +73,14 @@ class SpeciesSourceRepository(
             .distinctBy { it.canonicalUsageKey() }
             .filter { it.taxonomicStatus.equals(ACCEPTED_STATUS, ignoreCase = true) || it.acceptedKey != null }
             .map { it.toSearchResult() }
+            .also { cache.searchResults[cacheKey] = it }
     }
 
     suspend fun previewEnrichment(species: SpeciesSearchResult): SpeciesEnrichmentPreview {
+        val cacheKey = species.enrichmentCacheKey()
+        cache.enrichmentPreviews[cacheKey]?.let { return it }
         return gateway.previewSpeciesEnrichment(species)
+            .also { cache.enrichmentPreviews[cacheKey] = it }
     }
 
     private fun GbifSpeciesSearchRow.toSearchResult(): SpeciesSearchResult {
@@ -135,6 +146,30 @@ class SpeciesSourceRepository(
         const val SPECIES_RANK = "SPECIES"
         const val ACCEPTED_STATUS = "ACCEPTED"
     }
+}
+
+class SpeciesSourceCache {
+    val searchResults: MutableMap<String, List<SpeciesSearchResult>> = mutableMapOf()
+    val enrichmentPreviews: MutableMap<String, SpeciesEnrichmentPreview> = mutableMapOf()
+
+    companion object {
+        val shared = SpeciesSourceCache()
+    }
+}
+
+private fun SpeciesSearchResult.enrichmentCacheKey(): String {
+    return listOf(gbifUsageKey.toString(), scientificName.normalized(), canonicalName.normalized())
+        .joinToString("|")
+}
+
+private fun String?.normalized(): String {
+    return this
+        ?.trim()
+        ?.lowercase()
+        ?.replace(Regex("[^a-z0-9]+"), " ")
+        ?.replace(Regex("\\s+"), " ")
+        ?.trim()
+        .orEmpty()
 }
 
 class SupabaseSpeciesSourceGateway(

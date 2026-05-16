@@ -4,7 +4,18 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_app_surface">
 
+    <ProgressBar
+        android:id="@+id/progressBioCollectionRefresh"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="16dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
     <ScrollView
+        android:id="@+id/scrollviewBioCollection"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -33,7 +44,27 @@
                     android:textColor="@color/white"
                     android:textSize="30sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textviewBioCollectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Hold a record to select multiple entries."
+                    android:textColor="#D8F3DC"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linearlayoutBioCollectionActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="20dp"
+                android:paddingTop="16dp"
+                android:paddingRight="20dp"
+                android:paddingBottom="6dp" />
 
             <LinearLayout
                 android:id="@+id/linearlayoutBioEntries"

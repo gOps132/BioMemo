@@ -7,9 +7,11 @@ import android.view.View
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.example.biomemo.R
 import com.example.biomemo.screens.bio.BioCollectionActivity
-import com.example.biomemo.screens.capture.CaptureActivity
+import com.example.biomemo.screens.capture.BioRecordCaptureFlow
 import com.example.biomemo.screens.dashboard.DashboardActivity
 import com.example.biomemo.screens.profile.ProfileActivity
 import com.example.biomemo.screens.search.SearchActivity
@@ -18,6 +20,12 @@ object MainBottomNav {
     const val EXTRA_USERNAME = "username"
 
     fun setup(activity: AppCompatActivity, activeDestination: MainNavDestination, username: String?) {
+        val captureFlow = BioRecordCaptureFlow(activity)
+        activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                captureFlow.dispose()
+            }
+        })
         MainNavDestination.entries.forEach { destination ->
             val item = activity.findViewById<View>(destination.itemId)
             val icon = activity.findViewById<ImageView>(destination.iconId)
@@ -35,7 +43,11 @@ object MainBottomNav {
             }
             item.setOnClickListener {
                 if (destination == MainNavDestination.CAPTURE) {
-                    CaptureActionSheet.show(activity)
+                    CaptureActionSheet.show(
+                        activity = activity,
+                        onTakePhoto = { captureFlow.openCamera() },
+                        onUploadPhoto = { captureFlow.openUploadPicker() }
+                    )
                 } else if (!isActive) {
                     activity.openDestination(destination, username)
                 }
@@ -47,7 +59,7 @@ object MainBottomNav {
         val targetClass = when (destination) {
             MainNavDestination.HOME -> DashboardActivity::class.java
             MainNavDestination.RECORDS -> BioCollectionActivity::class.java
-            MainNavDestination.CAPTURE -> CaptureActivity::class.java
+            MainNavDestination.CAPTURE -> DashboardActivity::class.java
             MainNavDestination.SEARCH -> SearchActivity::class.java
             MainNavDestination.PROFILE -> ProfileActivity::class.java
         }

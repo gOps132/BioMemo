@@ -7,6 +7,7 @@ data class SearchUiState(
     val query: String,
     val bioRecords: List<BioEntry>,
     val speciesResults: List<SpeciesSearchResult>,
+    val suggestions: List<String>,
     val speciesError: String?,
     val isSpeciesSearchAvailable: Boolean
 )
@@ -14,7 +15,8 @@ data class SearchUiState(
 class SearchPresenter(
     private val loadBioRecords: suspend () -> List<BioEntry>,
     private val searchBioRecords: suspend (String) -> List<BioEntry>,
-    private val searchSpecies: suspend (String) -> List<SpeciesSearchResult>
+    private val searchSpecies: suspend (String) -> List<SpeciesSearchResult>,
+    private val loadSuggestions: suspend () -> List<String> = { emptyList() }
 ) {
     suspend fun search(rawQuery: String): SearchUiState {
         val query = rawQuery.trim()
@@ -23,6 +25,7 @@ class SearchPresenter(
                 query = query,
                 bioRecords = loadBioRecords(),
                 speciesResults = emptyList(),
+                suggestions = loadSuggestions(),
                 speciesError = null,
                 isSpeciesSearchAvailable = false
             )
@@ -34,6 +37,7 @@ class SearchPresenter(
                 query = query,
                 bioRecords = bioRecords,
                 speciesResults = emptyList(),
+                suggestions = emptyList(),
                 speciesError = null,
                 isSpeciesSearchAvailable = false
             )
@@ -46,6 +50,7 @@ class SearchPresenter(
                 query = query,
                 bioRecords = bioRecords,
                 speciesResults = emptyList(),
+                suggestions = emptyList(),
                 speciesError = "Species reference search unavailable.",
                 isSpeciesSearchAvailable = true
             )
@@ -55,6 +60,7 @@ class SearchPresenter(
             query = query,
             bioRecords = bioRecords,
             speciesResults = species,
+            suggestions = emptyList(),
             speciesError = null,
             isSpeciesSearchAvailable = true
         )

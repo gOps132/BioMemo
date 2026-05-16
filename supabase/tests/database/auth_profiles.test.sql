@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(6);
 
 insert into auth.users (
   id,
@@ -21,7 +21,7 @@ insert into auth.users (
   crypt('password', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  '{"field_name":"Trail Scout","username":"Trail Scout"}'::jsonb,
+  '{"username":"Trail Scout"}'::jsonb,
   now(),
   now()
 );
@@ -38,12 +38,6 @@ select is(
   (select username from public.profiles where id = '10000000-0000-0000-0000-000000000001'),
   'trailscout',
   'auth trigger stores normalized profile username'
-);
-
-select is(
-  (select field_name from public.profiles where id = '10000000-0000-0000-0000-000000000001'),
-  'Trail Scout',
-  'auth trigger stores field name'
 );
 
 select is(

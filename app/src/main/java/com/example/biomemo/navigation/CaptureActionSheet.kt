@@ -9,12 +9,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 
 object CaptureActionSheet {
-    fun show(activity: AppCompatActivity) {
+    fun show(activity: AppCompatActivity, onTakePhoto: () -> Unit, onUploadPhoto: () -> Unit) {
         val dialog = Dialog(activity)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.dialog_capture_actions)
@@ -32,12 +31,12 @@ object CaptureActionSheet {
         sheetRoot.setOnClickListener { dismissWithAnimation(dialog, sheet) }
         sheet.setOnClickListener { }
         dialog.findViewById<View>(R.id.actionTakePhoto).setOnClickListener {
-            Toast.makeText(activity, "Camera capture will create a BioRecord draft next.", Toast.LENGTH_SHORT).show()
             dismissWithAnimation(dialog, sheet)
+            onTakePhoto()
         }
         dialog.findViewById<View>(R.id.actionUploadPhoto).setOnClickListener {
-            Toast.makeText(activity, "Photo upload and metadata extraction are planned next.", Toast.LENGTH_SHORT).show()
             dismissWithAnimation(dialog, sheet)
+            onUploadPhoto()
         }
 
         dialog.show()
