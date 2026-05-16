@@ -1,6 +1,7 @@
 package com.example.biomemo.screens.search
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -24,6 +25,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 class SearchActivity : AppCompatActivity() {
     private val bioRepository = BioRepository()
@@ -101,7 +104,9 @@ class SearchActivity : AppCompatActivity() {
         val card = resultCard(clickable = true).apply {
             setOnClickListener { openBioRecord(entry) }
         }
-        card.addView(thumbnail(entry))
+        val thumbnail = thumbnail(entry)
+        card.addView(thumbnail)
+        loadThumbnail(entry, thumbnail)
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -182,6 +187,27 @@ class SearchActivity : AppCompatActivity() {
             Intent(this, BioRecordDetailActivity::class.java)
                 .putExtra(BioRecordDetailActivity.EXTRA_ENTRY_ID, entry.id)
         )
+    }
+
+    private fun loadThumbnail(entry: BioEntry, imageView: ImageView) {
+        if (entry.photoUrl.isBlank()) return
+        searchScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = if (entry.photoUrl.startsWith("http")) {
+                        entry.photoUrl
+                    } else {
+                        bioRepository.createSignedPhotoUrl(entry.photoUrl)
+                    }
+                    URL(url).openStream().use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
+            if (bitmap != null) {
+                imageView.setPadding(0, 0, 0, 0)
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+        }
     }
 
     private fun thumbnail(entry: BioEntry): ImageView = ImageView(this).apply {

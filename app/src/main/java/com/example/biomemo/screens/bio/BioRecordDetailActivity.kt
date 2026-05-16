@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.remote.ProfileResult
+import com.example.biomemo.data.remote.SupabaseProfileRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +23,7 @@ import java.net.URL
 
 class BioRecordDetailActivity : AppCompatActivity() {
     private val repository = BioRepository()
+    private val profileRepository = SupabaseProfileRepository()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,17 +41,18 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 return@launch
             }
 
-            renderEntry(entry)
+            val username = currentUsername()
+            renderEntry(entry, username)
         }
     }
 
-    private fun renderEntry(entry: BioEntry) {
+    private fun renderEntry(entry: BioEntry, username: String) {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
         heroImage.contentDescription = "${entry.commonName} photo"
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
         findViewById<TextView>(R.id.textviewBioRecordScientificName).text = entry.scientificName
         findViewById<TextView>(R.id.textviewBioRecordHeroMeta).text =
-            "${entry.category} · ${entry.confidence}% match · ${entry.verificationStatus}"
+            "${entry.category} · ${entry.confidence}% match"
         findViewById<TextView>(R.id.textviewBioRecordNotes).text = entry.notes
         loadHeroPhoto(entry, heroImage)
 
@@ -56,15 +60,12 @@ class BioRecordDetailActivity : AppCompatActivity() {
             R.id.linearlayoutObservationDetails,
             "Observation details",
             listOf(
-                "User ID" to entry.userId,
-                "Photo source" to entry.photoUrl,
-                "Source type" to entry.sourceType,
+                "Username" to username,
                 "Observed date" to entry.observedDate,
                 "Saved date" to entry.savedDate,
                 "Location label" to entry.location,
                 "Coordinates" to coordinates(entry),
-                "Metadata" to entry.metadataAvailability,
-                "Verification" to entry.verificationStatus
+                "Metadata" to entry.metadataAvailability
             )
         )
 
@@ -83,7 +84,14 @@ class BioRecordDetailActivity : AppCompatActivity() {
             )
         )
 
-        renderTags(entry.tags)
+        renderTags(entry.tags.filterNot { it == entry.verificationStatus })
+    }
+
+    private suspend fun currentUsername(): String {
+        return when (val result = profileRepository.loadCurrentProfile()) {
+            is ProfileResult.Success -> result.profile.username?.takeIf { it.isNotBlank() } ?: "Unknown user"
+            is ProfileResult.Failure -> "Unknown user"
+        }
     }
 
     private fun loadHeroPhoto(entry: BioEntry, imageView: ImageView) {

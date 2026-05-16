@@ -1,7 +1,9 @@
 package com.example.biomemo.screens.bio
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -17,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 class BioCollectionActivity : AppCompatActivity() {
     private val repository = BioRepository()
@@ -57,7 +61,9 @@ class BioCollectionActivity : AppCompatActivity() {
             setOnClickListener { openBioRecord(entry) }
         }
 
-        card.addView(thumbnail(entry))
+        val thumbnail = thumbnail(entry)
+        card.addView(thumbnail)
+        loadThumbnail(entry, thumbnail)
         card.addView(LinearLayout(this@BioCollectionActivity).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -69,7 +75,10 @@ class BioCollectionActivity : AppCompatActivity() {
             addView(text(entry.scientificName, 13, R.color.bio_ink_muted, false))
             addView(text("${entry.category} · ${entry.confidence}% match", 13, R.color.bio_forest_600, true))
             addView(text("${entry.date} · ${entry.location}", 13, R.color.bio_ink_muted, false))
-            addView(text(entry.notes, 14, R.color.bio_ink, false))
+            addView(text(entry.notes.previewText(), 14, R.color.bio_ink, false).apply {
+                maxLines = 4
+                ellipsize = TextUtils.TruncateAt.END
+            })
         })
         return card
     }
@@ -91,12 +100,41 @@ class BioCollectionActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadThumbnail(entry: BioEntry, imageView: ImageView) {
+        if (entry.photoUrl.isBlank()) return
+        bioScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = if (entry.photoUrl.startsWith("http")) {
+                        entry.photoUrl
+                    } else {
+                        repository.createSignedPhotoUrl(entry.photoUrl)
+                    }
+                    URL(url).openStream().use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
+            if (bitmap != null) {
+                imageView.setPadding(0, 0, 0, 0)
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+        }
+    }
+
     private fun text(value: String, sizeSp: Int, colorRes: Int, bold: Boolean): TextView = TextView(this).apply {
         text = value
         textSize = sizeSp.toFloat()
         setTextColor(getColor(colorRes))
         if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
         setPadding(0, dp(2), 0, dp(2))
+    }
+
+    private fun String.previewText(maxLength: Int = 220): String {
+        val compact = lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+        return if (compact.length <= maxLength) compact else compact.take(maxLength - 3).trimEnd() + "..."
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
