@@ -9,6 +9,7 @@ type SpeciesRequest = {
   order?: string | null;
   family?: string | null;
   genus?: string | null;
+  debugOpenAI?: boolean;
   debugGemini?: boolean;
 };
 
@@ -106,51 +107,31 @@ type EnrichmentField = {
   sourceUrl?: string | null;
 };
 
-type GeminiEnrichmentResponse = {
+type OpenAIEnrichmentResponse = {
   habitat?: EnrichmentField;
   diet?: EnrichmentField;
   lifespan?: EnrichmentField;
   distribution?: EnrichmentField;
+  conservationStatus?: EnrichmentField;
 };
 
-type GeminiGroundingMetadata = {
-  webSearchQueries?: string[];
-  groundingChunks?: Array<{
-    web?: {
-      uri?: string;
-      title?: string;
-    };
-  }>;
-  groundingSupports?: Array<{
-    segment?: {
+type OpenAIResponsesApiResponse = {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
       text?: string;
-    };
-    groundingChunkIndices?: number[];
+    }>;
   }>;
 };
 
-type GeminiGenerateContentResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-    groundingMetadata?: GeminiGroundingMetadata;
-  }>;
-};
-
-type GeminiFallbackResult = {
-  enrichment: GeminiEnrichmentResponse | null;
+type OpenAIFallbackResult = {
+  enrichment: OpenAIEnrichmentResponse | null;
   debug: {
     attempted: boolean;
     hasApiKey: boolean;
     missingFields: string[];
     httpStatus?: number;
     parseOk?: boolean;
-    grounded?: boolean;
-    searchQueries?: string[];
-    sourceUrls?: string[];
     acceptedFields?: string[];
     acceptedSourceUrls?: string[];
   };
@@ -207,9 +188,9 @@ Deno.serve(async (request) => {
   let habitat = habitatFrom(occurrences, wikipediaExtract ?? wikipediaSummary?.extract);
   let diet = dietFrom(wikipediaExtract ?? wikipediaSummary?.extract);
   let lifespan = lifespanFrom(wikipediaExtract ?? wikipediaSummary?.extract);
-  const conservationStatus = conservationFrom(iucnAssessment, inatTaxon, occurrences);
+  let conservationStatus = conservationFrom(iucnAssessment, inatTaxon, occurrences);
   const photo = photoFrom(inatTaxon);
-  const geminiFallback = await fetchGeminiFallback({
+  const openAiFallback = await fetchOpenAIFallback({
     canonicalName,
     commonName: clean(inatTaxon?.preferred_common_name) ?? clean(body.commonName),
     scientificName: clean(gbifSpecies?.scientificName) ?? clean(body.scientificName) ?? canonicalName,
@@ -218,12 +199,14 @@ Deno.serve(async (request) => {
     diet,
     lifespan,
     distribution,
+    conservationStatus,
   });
-  const geminiEnrichment = geminiFallback?.enrichment ?? null;
-  habitat = habitat ?? trustedGeminiValue(geminiEnrichment?.habitat);
-  diet = diet ?? trustedGeminiValue(geminiEnrichment?.diet);
-  lifespan = lifespan ?? trustedGeminiValue(geminiEnrichment?.lifespan);
-  distribution = distribution ?? trustedGeminiValue(geminiEnrichment?.distribution);
+  const openAiEnrichment = openAiFallback?.enrichment ?? null;
+  habitat = habitat ?? trustedOpenAIValue(openAiEnrichment?.habitat);
+  diet = diet ?? trustedOpenAIValue(openAiEnrichment?.diet);
+  lifespan = lifespan ?? trustedOpenAIValue(openAiEnrichment?.lifespan);
+  distribution = distribution ?? trustedOpenAIValue(openAiEnrichment?.distribution);
+  conservationStatus = conservationStatus ?? trustedOpenAIValue(openAiEnrichment?.conservationStatus);
 
   return jsonResponse({
     commonName: clean(inatTaxon?.preferred_common_name) ?? clean(body.commonName) ?? canonicalName,
@@ -234,13 +217,14 @@ Deno.serve(async (request) => {
     lifespan,
     distribution,
     conservationStatus,
-    sourceApi: sourceApi(inatTaxon, wikipediaSummary, wikipediaExtract, iucnAssessment, geminiEnrichment),
+    sourceApi: sourceApi(inatTaxon, wikipediaSummary, wikipediaExtract, iucnAssessment, openAiEnrichment),
     lastEnrichedDate: todayLabel(),
     photoUrl: photo?.url ?? notEnriched,
     photoAttribution: photo?.attribution ?? notEnriched,
     photoLicense: photo?.license ?? notEnriched,
     photoSource: photo?.source ?? notEnriched,
-    ...(body.debugGemini ? { geminiDebug: geminiFallback?.debug ?? null } : {}),
+    ...(body.debugOpenAI ? { openAiDebug: openAiFallback?.debug ?? null } : {}),
+    ...(body.debugGemini ? { geminiDebug: openAiFallback?.debug ?? null } : {}),
   });
 });
 
@@ -318,7 +302,7 @@ async function fetchIucnAssessment(canonicalName: string) {
   return assessments.find((assessment) => assessment.latest) ?? assessments[0] ?? null;
 }
 
-async function fetchGeminiFallback(input: {
+async function fetchOpenAIFallback(input: {
   canonicalName: string;
   commonName: string | null;
   scientificName: string;
@@ -327,14 +311,16 @@ async function fetchGeminiFallback(input: {
   diet: string | null;
   lifespan: string | null;
   distribution: string | null;
+  conservationStatus: string | null;
 }) {
   const missingFields = [
     input.habitat ? null : "habitat",
     input.diet ? null : "diet",
     input.lifespan ? null : "lifespan",
     input.distribution ? null : "distribution",
+    input.conservationStatus ? null : "conservationStatus",
   ].filter(Boolean);
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
   const baseDebug = {
     attempted: Boolean(apiKey && missingFields.length > 0),
     hasApiKey: Boolean(apiKey),
@@ -342,83 +328,74 @@ async function fetchGeminiFallback(input: {
   };
   if (!apiKey || missingFields.length === 0) return { enrichment: null, debug: baseDebug };
 
-  const geminiResponse = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+  const openAiResponse = await fetch(
+    "https://api.openai.com/v1/responses",
     {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
         "User-Agent": "BioMemo/1.0 species-enrichment-preview (Supabase Edge Function)",
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: geminiPrompt(input, missingFields as string[]),
-          }],
+        model: Deno.env.get("OPENAI_ENRICHMENT_MODEL") ?? "gpt-4.1-mini",
+        input: [{
+          role: "user",
+          content: [{ type: "input_text", text: openAiPrompt(input, missingFields as string[]) }],
         }],
-        tools: [
-          { googleSearch: {} },
-          { urlContext: {} },
-        ],
+        tools: [{ type: "web_search_preview", search_context_size: "medium" }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "species_enrichment",
+            strict: true,
+            schema: openAiResponseSchema(),
+          },
+        },
+        max_output_tokens: 1200,
       }),
     },
-  ).catch(() => null);
-  if (!geminiResponse?.ok) {
+  ).catch((error) => {
+    console.error("OpenAI species enrichment request failed", error);
+    return null;
+  });
+  if (!openAiResponse?.ok) {
+    const errorBody = await openAiResponse?.text().catch(() => "");
+    console.error("OpenAI species enrichment returned non-OK status", openAiResponse?.status, errorBody);
     return {
       enrichment: null,
       debug: {
         ...baseDebug,
-        httpStatus: geminiResponse?.status,
+        httpStatus: openAiResponse?.status,
       },
     };
   }
 
-  const response = (await geminiResponse.json().catch(() => null)) as GeminiGenerateContentResponse | null;
-  const candidate = response?.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text;
+  const response = (await openAiResponse.json().catch(() => null)) as OpenAIResponsesApiResponse | null;
+  const text = response?.output_text ?? response?.output?.flatMap((item) => item.content ?? [])
+    .map((content) => content.text)
+    .find((value) => typeof value === "string");
   if (!text) {
     return {
       enrichment: null,
       debug: {
         ...baseDebug,
-        httpStatus: geminiResponse.status,
-        grounded: hasGoogleSearchGrounding(candidate?.groundingMetadata),
-        searchQueries: candidate?.groundingMetadata?.webSearchQueries ?? [],
-        sourceUrls: groundingSourceUrls(candidate?.groundingMetadata),
-      },
-    };
-  }
-
-  const grounded = hasGoogleSearchGrounding(candidate?.groundingMetadata);
-  if (!grounded) {
-    return {
-      enrichment: null,
-      debug: {
-        ...baseDebug,
-        httpStatus: geminiResponse.status,
+        httpStatus: openAiResponse.status,
         parseOk: false,
-        grounded,
-        searchQueries: candidate?.groundingMetadata?.webSearchQueries ?? [],
-        sourceUrls: groundingSourceUrls(candidate?.groundingMetadata),
       },
     };
   }
 
-  const parsed = parseGeminiResponse(text);
-  const enrichment = parsed ? withGroundingSourceUrls(parsed, candidate?.groundingMetadata) : null;
+  const enrichment = parseOpenAIResponse(text);
   return {
     enrichment,
     debug: {
       ...baseDebug,
-      httpStatus: geminiResponse.status,
-      parseOk: Boolean(parsed),
-      grounded,
-      searchQueries: candidate?.groundingMetadata?.webSearchQueries ?? [],
-      sourceUrls: groundingSourceUrls(candidate?.groundingMetadata),
-      acceptedFields: acceptedGeminiFields(enrichment),
-      acceptedSourceUrls: acceptedGeminiSourceUrls(enrichment),
+      httpStatus: openAiResponse.status,
+      parseOk: Boolean(enrichment),
+      acceptedFields: acceptedOpenAIFields(enrichment),
+      acceptedSourceUrls: acceptedOpenAISourceUrls(enrichment),
     },
   };
 }
@@ -558,9 +535,9 @@ function sourceApi(
   wikipedia: WikipediaSummary | null,
   wikipediaExtract: string | null,
   iucn: IucnAssessment | null,
-  gemini: GeminiEnrichmentResponse | null,
+  openAi: OpenAIEnrichmentResponse | null,
 ) {
-  return ["GBIF", inat ? "iNaturalist" : null, iucn ? "IUCN Red List" : null, wikipedia || wikipediaExtract ? "Wikipedia" : null, hasTrustedGeminiValue(gemini) ? "Gemini Search" : null]
+  return ["GBIF", inat ? "iNaturalist" : null, iucn ? "IUCN Red List" : null, wikipedia || wikipediaExtract ? "Wikipedia" : null, hasTrustedOpenAIValue(openAi) ? "OpenAI Search" : null]
     .filter(Boolean)
     .join(", ");
 }
@@ -601,98 +578,50 @@ function isUsefulDietSentence(sentence: string) {
   return !/\b(newborn|juvenile|young)\b/i.test(sentence);
 }
 
-function trustedGeminiValue(field: EnrichmentField | undefined) {
-  if (!clean(field?.value) || !clean(field?.sourceUrl)) return null;
+function trustedOpenAIValue(field: EnrichmentField | undefined) {
+  if (!clean(field?.value)) return null;
   return clean(field?.value);
 }
 
-function hasTrustedGeminiValue(response: GeminiEnrichmentResponse | null) {
+function hasTrustedOpenAIValue(response: OpenAIEnrichmentResponse | null) {
   return Boolean(
-    trustedGeminiValue(response?.habitat) ||
-    trustedGeminiValue(response?.diet) ||
-    trustedGeminiValue(response?.lifespan) ||
-    trustedGeminiValue(response?.distribution)
+    trustedOpenAIValue(response?.habitat) ||
+    trustedOpenAIValue(response?.diet) ||
+    trustedOpenAIValue(response?.lifespan) ||
+    trustedOpenAIValue(response?.distribution) ||
+    trustedOpenAIValue(response?.conservationStatus)
   );
 }
 
-function parseGeminiResponse(text: string) {
+function parseOpenAIResponse(text: string) {
   try {
-    return JSON.parse(jsonObjectText(text)) as GeminiEnrichmentResponse;
+    return JSON.parse(jsonObjectText(text)) as OpenAIEnrichmentResponse;
   } catch {
     return null;
   }
 }
 
-function hasGoogleSearchGrounding(metadata: GeminiGroundingMetadata | undefined) {
-  return Boolean(
-    metadata?.webSearchQueries?.length ||
-    metadata?.groundingChunks?.some((chunk) => clean(chunk.web?.uri))
-  );
-}
-
-function withGroundingSourceUrls(
-  response: GeminiEnrichmentResponse,
-  metadata: GeminiGroundingMetadata | undefined,
-) {
-  return {
-    habitat: withGroundingSourceUrl(response.habitat, metadata),
-    diet: withGroundingSourceUrl(response.diet, metadata),
-    lifespan: withGroundingSourceUrl(response.lifespan, metadata),
-    distribution: withGroundingSourceUrl(response.distribution, metadata),
-  };
-}
-
-function withGroundingSourceUrl(
-  field: EnrichmentField | undefined,
-  metadata: GeminiGroundingMetadata | undefined,
-) {
-  const value = clean(field?.value);
-  if (!field || !value || clean(field.sourceUrl)) return field;
-
-  const sourceUrl = groundingSourceUrlFor(value, metadata);
-  return sourceUrl ? { ...field, sourceUrl } : field;
-}
-
-function groundingSourceUrlFor(value: string, metadata: GeminiGroundingMetadata | undefined) {
-  const chunks = metadata?.groundingChunks ?? [];
-  const supports = metadata?.groundingSupports ?? [];
-  const normalizedValue = normalizeText(value);
-
-  const matchingSupport = supports.find((support) => {
-    const segment = normalizeText(support.segment?.text);
-    return segment && (segment.includes(normalizedValue) || normalizedValue.includes(segment));
-  });
-  const supportedUrl = matchingSupport?.groundingChunkIndices
-    ?.map((index) => clean(chunks[index]?.web?.uri))
-    .find(Boolean);
-  if (supportedUrl) return supportedUrl;
-
-  return chunks.length === 1 ? clean(chunks[0]?.web?.uri) : null;
-}
-
-function groundingSourceUrls(metadata: GeminiGroundingMetadata | undefined) {
-  return [...new Set((metadata?.groundingChunks ?? []).map((chunk) => clean(chunk.web?.uri)).filter(Boolean))];
-}
-
-function acceptedGeminiFields(response: GeminiEnrichmentResponse | null) {
+function acceptedOpenAIFields(response: OpenAIEnrichmentResponse | null) {
   return [
-    trustedGeminiValue(response?.habitat) ? "habitat" : null,
-    trustedGeminiValue(response?.diet) ? "diet" : null,
-    trustedGeminiValue(response?.lifespan) ? "lifespan" : null,
-    trustedGeminiValue(response?.distribution) ? "distribution" : null,
+    trustedOpenAIValue(response?.habitat) ? "habitat" : null,
+    trustedOpenAIValue(response?.diet) ? "diet" : null,
+    trustedOpenAIValue(response?.lifespan) ? "lifespan" : null,
+    trustedOpenAIValue(response?.distribution) ? "distribution" : null,
+    trustedOpenAIValue(response?.conservationStatus) ? "conservationStatus" : null,
   ].filter(Boolean);
 }
 
-function acceptedGeminiSourceUrls(response: GeminiEnrichmentResponse | null) {
+function acceptedOpenAISourceUrls(response: OpenAIEnrichmentResponse | null) {
   return [...new Set([
-    trustedGeminiValue(response?.habitat) ? clean(response?.habitat?.sourceUrl) : null,
-    trustedGeminiValue(response?.diet) ? clean(response?.diet?.sourceUrl) : null,
-    trustedGeminiValue(response?.lifespan) ? clean(response?.lifespan?.sourceUrl) : null,
-    trustedGeminiValue(response?.distribution) ? clean(response?.distribution?.sourceUrl) : null,
+    trustedOpenAIValue(response?.habitat) ? clean(response?.habitat?.sourceUrl) : null,
+    trustedOpenAIValue(response?.diet) ? clean(response?.diet?.sourceUrl) : null,
+    trustedOpenAIValue(response?.lifespan) ? clean(response?.lifespan?.sourceUrl) : null,
+    trustedOpenAIValue(response?.distribution) ? clean(response?.distribution?.sourceUrl) : null,
+    trustedOpenAIValue(response?.conservationStatus) ? clean(response?.conservationStatus?.sourceUrl) : null,
   ].filter(Boolean))];
 }
 
-function geminiPrompt(input: {
+function openAiPrompt(input: {
   canonicalName: string;
   commonName: string | null;
   scientificName: string;
@@ -701,16 +630,15 @@ function geminiPrompt(input: {
   diet: string | null;
   lifespan: string | null;
   distribution: string | null;
+  conservationStatus: string | null;
 }, missingFields: string[]) {
   return [
     "You enrich public species reference data for a field journal app.",
     "Fill ONLY requested missing fields.",
-    "Use Google Search or URL context. Return a value only when a reliable source clearly supports it.",
+    "Use web search when needed. Return a value only when reliable public sources support it.",
     "Use concise, user-facing field text. Do not mention uncertainty inside value.",
     "If no reliable source is found, set value and sourceUrl to empty strings.",
     "Never infer, guess, or invent facts.",
-    "Return ONLY valid JSON, no markdown, matching this exact shape:",
-    JSON.stringify(geminiResponseSchema()),
     `Species canonical name: ${input.canonicalName}`,
     `Scientific name: ${input.scientificName}`,
     `Common name: ${input.commonName ?? "unknown"}`,
@@ -719,9 +647,10 @@ function geminiPrompt(input: {
   ].join("\n");
 }
 
-function geminiResponseSchema() {
+function openAiResponseSchema() {
   const fieldSchema = {
     type: "object",
+    additionalProperties: false,
     properties: {
       value: { type: "string", description: "Concise field value, or empty string if unsupported." },
       sourceUrl: { type: "string", description: "URL supporting this exact value, or empty string if unsupported." },
@@ -731,13 +660,15 @@ function geminiResponseSchema() {
 
   return {
     type: "object",
+    additionalProperties: false,
     properties: {
       habitat: fieldSchema,
       diet: fieldSchema,
       lifespan: fieldSchema,
       distribution: fieldSchema,
+      conservationStatus: fieldSchema,
     },
-    required: ["habitat", "diet", "lifespan", "distribution"],
+    required: ["habitat", "diet", "lifespan", "distribution", "conservationStatus"],
   };
 }
 
@@ -775,14 +706,6 @@ function matchesSpeciesName(gbif: GbifSpecies | null, canonicalName: string) {
 }
 
 function normalizeName(value: string | null | undefined) {
-  return clean(value)
-    ?.toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ") ?? "";
-}
-
-function normalizeText(value: string | null | undefined) {
   return clean(value)
     ?.toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
