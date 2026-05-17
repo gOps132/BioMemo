@@ -25,7 +25,6 @@ import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
-import com.example.biomemo.ui.BioImagePreviewDialog
 import com.example.biomemo.ui.roundedImageView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -236,15 +235,6 @@ class BioCollectionActivity : AppCompatActivity() {
         holder.thumbnail.setImageResource(R.drawable.ic_bio_record_photo)
         holder.thumbnail.setPadding(0, 0, 0, 0)
         holder.thumbnail.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        holder.thumbnail.setOnClickListener {
-            if (entry.photoUrl.isNotBlank()) {
-                BioImagePreviewDialog.show(
-                    activity = this,
-                    photoRef = entry.photoUrl,
-                    signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
-                )
-            }
-        }
         loadThumbnail(entry, holder.thumbnail)
         holder.commonName.text = entry.commonName
         holder.scientificName.text = entry.scientificName
@@ -354,8 +344,6 @@ class BioCollectionActivity : AppCompatActivity() {
     private fun thumbnail(): ImageView = roundedImageView(this, dp(10).toFloat()).apply {
         setImageResource(R.drawable.ic_bio_record_photo)
         setPadding(0, 0, 0, 0)
-        isClickable = true
-        isFocusable = true
         layoutParams = LinearLayout.LayoutParams(dp(74), dp(74)).apply {
             rightMargin = dp(14)
         }

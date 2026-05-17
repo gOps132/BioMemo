@@ -18,6 +18,7 @@ import com.example.biomemo.data.remote.ProfileResult
 import com.example.biomemo.data.remote.SupabaseProfileRepository
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.BioImagePreviewDialog
 import com.example.biomemo.ui.applyRoundedCorners
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,17 @@ class BioRecordDetailActivity : AppCompatActivity() {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
         heroImage.applyRoundedCorners(dp(14).toFloat())
         heroImage.contentDescription = "${entry.commonName} photo"
+        heroImage.isClickable = entry.photoUrl.isNotBlank()
+        heroImage.isFocusable = entry.photoUrl.isNotBlank()
+        heroImage.setOnClickListener {
+            if (entry.photoUrl.isNotBlank()) {
+                BioImagePreviewDialog.show(
+                    activity = this,
+                    photoRef = entry.photoUrl,
+                    signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+                )
+            }
+        }
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
         findViewById<TextView>(R.id.textviewBioRecordScientificName).text = entry.scientificName
         findViewById<TextView>(R.id.textviewBioRecordHeroMeta).text =
