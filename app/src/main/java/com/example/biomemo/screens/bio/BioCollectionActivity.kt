@@ -39,6 +39,7 @@ class BioCollectionActivity : AppCompatActivity() {
     private var entries: List<BioEntry> = emptyList()
     private var sortMode: BioCollectionSort = BioCollectionSort.NEWEST
     private val selectedEntryIds = linkedSetOf<String>()
+    private val expandedNoteIds = linkedSetOf<String>()
     private lateinit var refreshProgress: ProgressBar
     private lateinit var entriesList: RecyclerView
     private lateinit var emptyText: TextView
@@ -240,7 +241,19 @@ class BioCollectionActivity : AppCompatActivity() {
         holder.category.text = "${entry.category} · ${entry.confidence}% match"
         holder.location.text = "${entry.date} · ${entry.location}"
         holder.tags.text = entry.tags.joinToString(" · ")
-        holder.notes.text = entry.notes.previewText()
+        val compactNotes = entry.notes.compactText()
+        val shouldCollapseNotes = compactNotes.length > NOTE_PREVIEW_MAX_LENGTH
+        val notesExpanded = entry.id in expandedNoteIds
+        holder.notes.text = if (notesExpanded || !shouldCollapseNotes) compactNotes else compactNotes.previewText()
+        holder.notes.maxLines = if (notesExpanded) Int.MAX_VALUE else 3
+        holder.notes.ellipsize = if (notesExpanded) null else TextUtils.TruncateAt.END
+        holder.more.visibility = if (shouldCollapseNotes) View.VISIBLE else View.GONE
+        holder.more.text = if (notesExpanded) "Less" else "More"
+        holder.more.setOnClickListener {
+            if (notesExpanded) expandedNoteIds.remove(entry.id) else expandedNoteIds.add(entry.id)
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION) entriesAdapter.notifyItemChanged(position)
+        }
     }
 
     private fun createEntryViewHolder(): BioEntryViewHolder {
@@ -258,6 +271,12 @@ class BioCollectionActivity : AppCompatActivity() {
             maxLines = 3
             ellipsize = TextUtils.TruncateAt.END
         }
+        val more = text("More", 13, R.color.bio_forest_600, true).apply {
+            visibility = View.GONE
+            isClickable = true
+            isFocusable = true
+            setPadding(0, dp(4), 0, 0)
+        }
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -271,8 +290,9 @@ class BioCollectionActivity : AppCompatActivity() {
             addView(location)
             addView(tags)
             addView(notes)
+            addView(more)
         })
-        return BioEntryViewHolder(card, thumbnail, commonName, scientificName, category, location, tags, notes)
+        return BioEntryViewHolder(card, thumbnail, commonName, scientificName, category, location, tags, notes, more)
     }
 
     private fun toggleSelection(entry: BioEntry) {
@@ -368,12 +388,15 @@ class BioCollectionActivity : AppCompatActivity() {
         ).apply { rightMargin = dp(8) }
     }
 
-    private fun String.previewText(maxLength: Int = 220): String {
-        val compact = lineSequence()
+    private fun String.compactText(): String {
+        return lineSequence()
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .joinToString(" ")
-        return if (compact.length <= maxLength) compact else compact.take(maxLength - 3).trimEnd() + "..."
+    }
+
+    private fun String.previewText(maxLength: Int = NOTE_PREVIEW_MAX_LENGTH): String {
+        return if (length <= maxLength) this else take(maxLength).trimEnd()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -408,8 +431,13 @@ class BioCollectionActivity : AppCompatActivity() {
         val category: TextView,
         val location: TextView,
         val tags: TextView,
-        val notes: TextView
+        val notes: TextView,
+        val more: TextView
     ) : RecyclerView.ViewHolder(card)
+
+    private companion object {
+        const val NOTE_PREVIEW_MAX_LENGTH = 180
+    }
 }
 
 private enum class BioCollectionSort(val label: String) {

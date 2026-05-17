@@ -68,7 +68,6 @@ object MainBottomNav {
         applyBottomPaddingInset(activity, R.id.layoutBioCollectionContent)
         applyBottomPaddingInset(activity, R.id.layoutSearchContent)
         applyScrollContentInset(activity)
-        applyBottomMarginInset(activity, R.id.linearlayoutBioMapPreview)
     }
 
     private fun applyBottomNavInset(activity: AppCompatActivity) {

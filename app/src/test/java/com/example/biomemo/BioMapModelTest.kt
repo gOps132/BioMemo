@@ -17,6 +17,7 @@ class BioMapModelTest {
                     location = "Mossy Creek",
                     latitude = 14.5995,
                     longitude = 120.9842,
+                    photoUrl = "bio-records/record-1/original.jpg",
                     metadataAvailability = "GPS coordinates available"
                 )
             )
@@ -26,6 +27,7 @@ class BioMapModelTest {
         assertEquals(1, state.pins.size)
         assertEquals(0, state.recordsWithoutLocation)
         assertEquals("1 mapped · all BioRecords have GPS", state.summary)
+        assertEquals("bio-records/record-1/original.jpg", state.pins.single().photoUrl)
         assertEquals("Mossy Creek · May 6, 2026 · 87% ID confidence", state.pins.single().primaryMetadata)
         assertEquals("GPS coordinates available · 14.59950, 120.98420", state.pins.single().locationMetadata)
         assertEquals("amphibian", state.pins.single().tagsLabel)
@@ -81,6 +83,7 @@ class BioMapModelTest {
         commonName: String = "Unidentified organism",
         scientificName: String = "Awaiting identification",
         location: String = "Mossy Creek",
+        photoUrl: String = "",
         latitude: Double? = 12.34,
         longitude: Double? = 56.78,
         metadataAvailability: String = "GPS coordinates available"
@@ -97,7 +100,7 @@ class BioMapModelTest {
         notes = "Found near water.",
         tags = listOf("amphibian"),
         userId = "user-1",
-        photoUrl = "",
+        photoUrl = photoUrl,
         sourceType = "camera",
         observedDate = "May 6, 2026",
         savedDate = "May 7, 2026",
