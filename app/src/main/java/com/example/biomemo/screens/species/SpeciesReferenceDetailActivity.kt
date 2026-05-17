@@ -1,7 +1,6 @@
 package com.example.biomemo.screens.species
 
 import android.content.res.ColorStateList
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -13,13 +12,13 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
+import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.applyRoundedCorners
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URL
 
 class SpeciesReferenceDetailActivity : AppCompatActivity() {
     private val speciesRepository = SpeciesSourceRepository()
@@ -97,6 +96,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
 
     private fun renderPhoto(detail: SpeciesReferenceDetail) {
         val imageView = findViewById<ImageView>(R.id.imageviewSpeciesReferencePhoto)
+        imageView.applyRoundedCorners(dp(14).toFloat())
         val creditView = findViewById<TextView>(R.id.textviewSpeciesReferencePhotoCredit)
         val photoUrl = detail.photoUrl
 
@@ -110,9 +110,12 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
         creditView.visibility = if (detail.photoCredit.isNullOrBlank()) View.GONE else View.VISIBLE
         imageView.visibility = View.VISIBLE
         speciesScope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                runCatching { URL(photoUrl).openStream().use(BitmapFactory::decodeStream) }.getOrNull()
-            }
+            val bitmap = BioImageLoader.loadBitmap(
+                photoRef = photoUrl,
+                targetWidthPx = resources.displayMetrics.widthPixels,
+                targetHeightPx = dp(320),
+                signedUrlResolver = { path -> path }
+            )
             if (bitmap != null) {
                 imageView.setImageBitmap(bitmap)
             }

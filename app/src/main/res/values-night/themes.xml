@@ -3,7 +3,9 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/bio_forest_950</item>
-        <item name="android:navigationBarColor">@color/bio_forest_950</item>
+        <item name="android:navigationBarColor">@color/bio_surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
         <item name="colorPrimary">@color/bio_forest_700</item>
         <item name="colorPrimaryVariant">@color/bio_forest_950</item>
         <item name="colorOnPrimary">@color/white</item>

@@ -69,7 +69,7 @@ class BioRepositoryTest {
         assertEquals("30 to 60 years.", entry.lifespan)
         assertEquals("Philippines.", entry.distribution)
         assertEquals("critically endangered", entry.conservationStatus)
-        assertEquals("Gemini image identification", entry.sourceApi)
+        assertEquals("OpenAI image identification", entry.sourceApi)
         assertEquals("May 6, 2026", entry.lastEnrichedDate)
     }
 
@@ -94,6 +94,34 @@ class BioRepositoryTest {
         assertEquals("Unidentified organism", entries.first().commonName)
         assertEquals("Philippine Eagle", entries.last().commonName)
         assertEquals("Primary and secondary forest.", entries.last().habitat)
+    }
+
+    @Test
+    fun observeEntryByIdKeepsGeneratedCandidateNotes() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-candidate")),
+                observedRows = listOf(sampleRow(id = "record-with-candidate")),
+                identificationCandidates = listOf(
+                    IdentificationCandidateRow(
+                        bioRecordId = "record-with-candidate",
+                        commonName = "Asian common toad",
+                        scientificName = "Duttaphrynus melanostictus",
+                        confidenceScore = 82,
+                        reasoning = "Warty skin and parotoid glands are visible.",
+                        visibleTraits = "Brown warty skin; stout body",
+                        uncertaintyNotes = "Photo angle hides feet.",
+                        selected = true
+                    )
+                )
+            )
+        )
+
+        val entry = repository.observeEntryById("record-with-candidate").take(1).toList().single()
+
+        assertEquals("Asian common toad", entry.commonName)
+        assertTrue(entry.notes.contains("Warty skin"))
+        assertTrue(!entry.notes.contains("No field notes yet."))
     }
 
     @Test
@@ -130,7 +158,7 @@ class BioRepositoryTest {
         assertEquals("Asian common toad", entry?.commonName)
         assertEquals("Duttaphrynus melanostictus", entry?.scientificName)
         assertEquals(82, entry?.confidence)
-        assertEquals("Gemini image identification", entry?.sourceApi)
+        assertEquals("OpenAI image identification", entry?.sourceApi)
         assertTrue(entry?.notes?.contains("Warty skin") == true)
         assertTrue(entry?.notes?.contains("AI reasoning:") == false)
     }
@@ -428,7 +456,7 @@ class BioRepositoryTest {
             lifespan = "30 to 60 years.",
             distribution = "Philippines.",
             conservationStatus = "critically endangered",
-            sourceApi = "Gemini image identification",
+            sourceApi = "OpenAI image identification",
             lastEnrichedAt = "2026-05-06T09:45:00Z"
         )
     }

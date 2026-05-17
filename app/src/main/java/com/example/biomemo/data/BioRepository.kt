@@ -215,7 +215,7 @@ class BioRepository(
     fun observeEntryById(id: String): Flow<BioEntry> {
         return kotlinx.coroutines.flow.flow {
             gateway.observeBioRecord(id).collect { row ->
-                emit(row.toBioEntry())
+                emit(row.toBioEntryWithLookups())
             }
         }
     }
@@ -438,6 +438,16 @@ class BioRepository(
             ?: gateway.fetchSpeciesProfiles().also { cache.speciesProfiles = it }
     }
 
+    private suspend fun BioRecordRow.toBioEntryWithLookups(): BioEntry {
+        val candidate = fetchIdentificationCandidates()
+            .filter { it.bioRecordId == id }
+            .bestCandidate()
+        val profile = speciesProfile ?: speciesProfileId?.let { profileId ->
+            fetchSpeciesProfiles().firstOrNull { it.id == profileId }
+        }
+        return toBioEntry(candidate, profile)
+    }
+
     private fun invalidateRecords(includeLookups: Boolean = false) {
         cache.bioRecords = null
         cache.entries = null
@@ -494,7 +504,7 @@ class BioRepository(
             distribution = species?.distribution.presentOrNull() ?: NOT_ENRICHED,
             conservationStatus = species?.conservationStatus.presentOrNull() ?: NOT_ENRICHED,
             sourceApi = species?.sourceApi.presentOrNull()
-                ?: if (candidate == null) "Pending identification" else "Gemini image identification",
+                ?: if (candidate == null) "Pending identification" else "OpenAI image identification",
             lastEnrichedDate = species?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
         )
     }

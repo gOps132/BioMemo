@@ -1,22 +1,25 @@
 package com.example.biomemo.screens.map
 
+import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.LinearLayout
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.biomemo.R
+import com.example.biomemo.data.BioRepository
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.screens.bio.BioRecordDetailActivity
+import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.applyRoundedCorners
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.XYTileSource
-import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.infowindow.InfoWindow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,6 +30,8 @@ class BioMapActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private val repository = BioRepository()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
+    private val focusEntryId: String?
+        get() = intent.getStringExtra(EXTRA_FOCUS_ENTRY_ID)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,9 +42,9 @@ class BioMapActivity : AppCompatActivity() {
 
         mapView = findViewById(R.id.mapviewBioMap)
         bioScope.launch {
-            val entries = repository.getAllEntries().filter { it.latitude != null && it.longitude != null }
-            setupMap(entries)
-            setupChrome(entries)
+            val state = BioMapModel.fromEntries(repository.getAllEntries())
+            setupMap(state)
+            setupChrome(state)
         }
     }
 
@@ -58,7 +63,7 @@ class BioMapActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun setupMap(entries: List<BioEntry>) {
+    private fun setupMap(state: BioMapUiState) {
         mapView.setTileSource(cartoLightTileSource())
         mapView.setMultiTouchControls(true)
         mapView.minZoomLevel = 4.0
@@ -67,56 +72,100 @@ class BioMapActivity : AppCompatActivity() {
         mapView.overlayManager.tilesOverlay.setColorFilter(null)
         mapView.zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
 
-        entries.forEach { addBioRecordMarker(it) }
+        val targetPin = state.focusedPin() ?: state.pins.firstOrNull()
+        var targetMarker: Marker? = null
+        state.pins.forEach { pin ->
+            val marker = addBioRecordMarker(pin)
+            if (pin.id == targetPin?.id) targetMarker = marker
+        }
 
-        if (entries.isEmpty()) {
+        if (targetPin != null) {
+            mapView.post {
+                mapView.controller.setZoom(16.0)
+                mapView.controller.setCenter(GeoPoint(targetPin.latitude, targetPin.longitude))
+                targetMarker?.showInfoWindow()
+            }
+            return
+        }
+
+        if (state.pins.isEmpty()) {
             mapView.controller.setZoom(5.0)
             mapView.controller.setCenter(GeoPoint(44.0, -120.5))
             return
         }
 
-        mapView.post {
-            val latitudes = entries.mapNotNull { it.latitude }
-            val longitudes = entries.mapNotNull { it.longitude }
-            val box = BoundingBox(
-                latitudes.maxOrNull() ?: 49.0,
-                longitudes.maxOrNull() ?: -116.0,
-                latitudes.minOrNull() ?: 38.0,
-                longitudes.minOrNull() ?: -124.0
-            )
-            mapView.zoomToBoundingBox(box.increaseByScale(1.35f), true, dp(72))
+    }
+
+    private fun setupChrome(state: BioMapUiState) {
+        findViewById<ImageButton>(R.id.imagebuttonBioMapBack).setOnClickListener { finish() }
+        if (state.pins.isEmpty()) {
+            showEmptyMessage(state)
         }
     }
 
-    private fun setupChrome(entries: List<BioEntry>) {
-        findViewById<TextView>(R.id.textviewBioMapBack).setOnClickListener { finish() }
-        findViewById<TextView>(R.id.textviewBioMapSummary).text =
-            "${entries.size} BioRecord pins · minimalist OSM view"
-    }
-
-    private fun addBioRecordMarker(entry: BioEntry) {
+    private fun addBioRecordMarker(pin: BioMapPin): Marker {
         val marker = Marker(mapView).apply {
-            position = GeoPoint(entry.latitude ?: return, entry.longitude ?: return)
-            title = entry.commonName
-            subDescription = "${entry.scientificName} · ${entry.location}"
+            position = GeoPoint(pin.latitude, pin.longitude)
+            title = pin.commonName
+            subDescription = "${pin.scientificName} · ${pin.locationMetadata}"
             icon = ContextCompat.getDrawable(this@BioMapActivity, R.drawable.ic_bio_map_pin)
+            infoWindow = BioRecordInfoWindow(pin)
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             setOnMarkerClickListener { selectedMarker, _ ->
+                mapView.controller.animateTo(selectedMarker.position)
                 selectedMarker.showInfoWindow()
-                showBioRecordPreview(entry)
                 true
             }
         }
         mapView.overlays.add(marker)
+        return marker
     }
 
-    private fun showBioRecordPreview(entry: BioEntry) {
-        findViewById<LinearLayout>(R.id.linearlayoutBioMapPreview).visibility = View.VISIBLE
-        findViewById<TextView>(R.id.textviewBioMapPreviewTitle).text = entry.commonName
-        findViewById<TextView>(R.id.textviewBioMapPreviewSubtitle).text =
-            "${entry.scientificName} · ${entry.category}"
-        findViewById<TextView>(R.id.textviewBioMapPreviewMeta).text =
-            "${entry.location} · ${entry.date} · ${entry.confidence}% ID confidence"
+    private fun showEmptyMessage(state: BioMapUiState) {
+        findViewById<TextView>(R.id.textviewBioMapEmpty).apply {
+            visibility = android.view.View.VISIBLE
+            text = "${state.emptyTitle.orEmpty()}\n${state.emptyMessage.orEmpty()}\n" +
+            "${state.totalRecords} total · ${state.recordsWithoutLocation} missing GPS"
+        }
+    }
+
+    private fun openBioRecord(pin: BioMapPin) {
+        startActivity(
+            Intent(this, BioRecordDetailActivity::class.java)
+                .putExtra(BioRecordDetailActivity.EXTRA_ENTRY_ID, pin.id)
+        )
+    }
+
+    private fun loadPinThumbnail(pin: BioMapPin, imageView: ImageView) {
+        imageView.setImageResource(R.drawable.ic_bio_record_photo)
+        imageView.tag = pin.photoUrl
+        if (pin.photoUrl.isBlank()) return
+        bioScope.launch {
+            val bitmap = BioImageLoader.loadBitmap(
+                photoRef = pin.photoUrl,
+                targetWidthPx = dp(64),
+                targetHeightPx = dp(64),
+                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+            )
+            if (bitmap != null && imageView.tag == pin.photoUrl) {
+                imageView.setImageBitmap(bitmap)
+            }
+        }
+    }
+
+    private inner class BioRecordInfoWindow(
+        private val pin: BioMapPin
+    ) : InfoWindow(R.layout.view_bio_map_pin_info, mapView) {
+        override fun onOpen(item: Any?) {
+            val thumbnail = mView.findViewById<ImageView>(R.id.imageviewBioMapPinThumbnail)
+            thumbnail.applyRoundedCorners(dp(10).toFloat())
+            mView.setOnClickListener { openBioRecord(pin) }
+            loadPinThumbnail(pin, thumbnail)
+        }
+
+        override fun onClose() {
+            mView.setOnClickListener(null)
+        }
     }
 
     private fun cartoLightTileSource(): XYTileSource = XYTileSource(
@@ -134,4 +183,13 @@ class BioMapActivity : AppCompatActivity() {
     )
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun BioMapUiState.focusedPin(): BioMapPin? {
+        val requestedId = focusEntryId ?: return null
+        return pins.firstOrNull { it.id == requestedId }
+    }
+
+    companion object {
+        const val EXTRA_FOCUS_ENTRY_ID = "focus_bio_record_id"
+    }
 }

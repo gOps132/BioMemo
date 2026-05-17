@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutBioMapPinInfo"
+    android:layout_width="64dp"
+    android:layout_height="64dp"
+    android:background="@drawable/bg_map_info_window"
+    android:clickable="true"
+    android:elevation="8dp"
+    android:focusable="true"
+    android:padding="4dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/imageviewBioMapPinThumbnail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Open BioRecord"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_bio_record_photo" />
+</FrameLayout>
