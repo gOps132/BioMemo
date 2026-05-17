@@ -67,4 +67,15 @@ class SplashRouteDeciderTest {
 
         assertEquals(SplashDestination.LOGIN, decider.decideDestination())
     }
+
+    @Test
+    fun routesToLoginWhenBlockingSessionRestoreExceedsTimeout() = runBlocking {
+        val decider = SplashRouteDecider(
+            restorePersistedSession = { Thread.sleep(50) },
+            hasActiveSession = { true },
+            restoreTimeoutMs = 1
+        )
+
+        assertEquals(SplashDestination.LOGIN, decider.decideDestination())
+    }
 }

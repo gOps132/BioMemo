@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -5,10 +6,21 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+fun localPropertiesFiles(): List<File> {
+    val worktreeRoot = rootProject.projectDir
+    val parentCheckoutProperties = worktreeRoot.parentFile
+        ?.takeIf { it.name == ".worktrees" }
+        ?.parentFile
+        ?.resolve("local.properties")
+    return listOfNotNull(parentCheckoutProperties, rootProject.file("local.properties"))
+        .distinctBy { it.absolutePath }
+}
+
 val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.inputStream().use { load(it) }
+    localPropertiesFiles().forEach { localPropertiesFile ->
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { load(it) }
+        }
     }
 }
 
