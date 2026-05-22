@@ -85,6 +85,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.textviewBioRecordNotes).text = entry.notes
         loadHeroPhoto(entry, heroImage)
         setupShowInMap(entry)
+        setupRetryIdentification(entry, username)
 
         renderRows(
             R.id.linearlayoutObservationDetails,
@@ -112,7 +113,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 "Source API" to entry.sourceApi,
                 "Last enriched" to entry.lastEnrichedDate
             ),
-            loadingLabels = ENRICHMENT_LOADING_LABELS
+            verificationStatus = entry.verificationStatus
         )
 
         renderTags(entry.tags.filterNot { it == entry.verificationStatus })
@@ -154,11 +155,45 @@ class BioRecordDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupRetryIdentification(entry: BioEntry, username: String) {
+        findViewById<TextView>(R.id.textviewBioRecordRetryIdentification).apply {
+            isEnabled = true
+            text = "Retry identification"
+            visibility = if (
+                BioRecordDetailState.shouldShowRetryIdentification(
+                    verificationStatus = entry.verificationStatus,
+                    scientificName = entry.scientificName,
+                    commonName = entry.commonName
+                )
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+            setOnClickListener {
+                isEnabled = false
+                text = "Retrying"
+                bioScope.launch {
+                    val retriedEntry = runCatching {
+                        repository.retryIdentification(entry.id)
+                    }.getOrNull()
+                    if (retriedEntry == null) {
+                        Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()
+                        isEnabled = true
+                        text = "Retry identification"
+                    } else {
+                        renderEntry(retriedEntry, username)
+                    }
+                }
+            }
+        }
+    }
+
     private fun renderRows(
         containerId: Int,
         title: String,
         rows: List<Pair<String, String>>,
-        loadingLabels: Set<String> = emptySet()
+        verificationStatus: String = ""
     ) {
         val container = findViewById<LinearLayout>(containerId)
         container.removeAllViews()
@@ -167,7 +202,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            if (label in loadingLabels && value.isPendingEnrichment()) {
+            if (BioRecordDetailState.shouldShowEnrichmentLoading(label, value, verificationStatus)) {
                 container.addView(loadingValue())
             } else {
                 container.addView(text(value, 15, R.color.bio_ink, false))
@@ -186,8 +221,6 @@ class BioRecordDetailActivity : AppCompatActivity() {
             contentDescription = "Loading enrichment"
         }
     }
-
-    private fun String.isPendingEnrichment(): Boolean = trim().equals(NOT_ENRICHED, ignoreCase = true)
 
     private fun renderTags(tags: List<String>) {
         val container = findViewById<LinearLayout>(R.id.linearlayoutBioRecordTags)
@@ -247,14 +280,5 @@ class BioRecordDetailActivity : AppCompatActivity() {
         const val EXTRA_ENTRY_ID = "bio_record_id"
         private const val NOT_ENRICHED = "Not enriched yet"
         private const val AWAITING_IDENTIFICATION = "Awaiting identification"
-        private val ENRICHMENT_LOADING_LABELS = setOf(
-            "Taxonomy",
-            "Habitat",
-            "Diet",
-            "Lifespan",
-            "Distribution",
-            "Conservation status",
-            "Last enriched"
-        )
     }
 }

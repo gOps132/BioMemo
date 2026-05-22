@@ -125,6 +125,32 @@ class BioRepositoryTest {
     }
 
     @Test
+    fun observeEntryByIdRefreshesIdentificationCandidatesAfterTheyChange() = runBlocking {
+        val candidates = mutableListOf<IdentificationCandidateRow>()
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "record-with-late-candidate")),
+                observedRows = listOf(sampleRow(id = "record-with-late-candidate")),
+                identificationCandidates = candidates
+            )
+        )
+
+        assertEquals("Unidentified organism", repository.getEntryById("record-with-late-candidate")?.commonName)
+        candidates += IdentificationCandidateRow(
+            bioRecordId = "record-with-late-candidate",
+            commonName = "Asian common toad",
+            scientificName = "Duttaphrynus melanostictus",
+            confidenceScore = 82,
+            selected = true
+        )
+
+        val entry = repository.observeEntryById("record-with-late-candidate").take(1).toList().single()
+
+        assertEquals("Asian common toad", entry.commonName)
+        assertEquals("Duttaphrynus melanostictus", entry.scientificName)
+    }
+
+    @Test
     fun searchMatchesMappedRecordFields() = runBlocking {
         val repository = BioRepository(FakeBioRecordGateway(listOf(sampleRow(locationLabel = "Fern Ridge"))))
 
@@ -161,6 +187,69 @@ class BioRepositoryTest {
         assertEquals("OpenAI image identification", entry?.sourceApi)
         assertTrue(entry?.notes?.contains("Warty skin") == true)
         assertTrue(entry?.notes?.contains("AI reasoning:") == false)
+    }
+
+    @Test
+    fun failedIdentificationMapsToFinalNoResultState() = runBlocking {
+        val repository = BioRepository(
+            FakeBioRecordGateway(
+                rows = listOf(sampleRow(id = "failed-record", verificationStatus = "failed"))
+            )
+        )
+
+        val entry = repository.getEntryById("failed-record")
+
+        assertEquals("No organism identified", entry?.commonName)
+        assertEquals("Not available", entry?.scientificName)
+        assertEquals(0, entry?.confidence)
+        assertEquals("Identification failed or found no organism.", entry?.sourceApi)
+        assertEquals("Unavailable until an organism is identified", entry?.habitat)
+    }
+
+    @Test
+    fun createDraftUploadRecordReturnsFailedEntryWhenIdentificationThrows() = runBlocking {
+        val gateway = FakeBioRecordGateway(
+            rows = emptyList(),
+            userId = "user-123",
+            identifyError = IllegalStateException("Image identification failed: HTTP 502")
+        )
+        val repository = BioRepository(gateway, recordIdProvider = { "record-abc" })
+
+        val entry = repository.createDraftUploadRecord(
+            BioRecordPhotoUpload(
+                bytes = byteArrayOf(1, 2, 3),
+                contentType = "image/jpeg"
+            )
+        )
+
+        assertEquals("record-abc", entry.id)
+        assertEquals("failed", entry.verificationStatus)
+        assertEquals("No organism identified", entry.commonName)
+        assertEquals("Not available", entry.scientificName)
+        assertEquals("Identification failed or found no organism.", entry.sourceApi)
+    }
+
+    @Test
+    fun retryIdentificationRunsIdentifyAgainAndMapsNewCandidate() = runBlocking {
+        val gateway = FakeBioRecordGateway(
+            rows = listOf(sampleRow(id = "retry-record", verificationStatus = "failed")),
+            identificationCandidates = listOf(
+                IdentificationCandidateRow(
+                    bioRecordId = "retry-record",
+                    commonName = "Asian common toad",
+                    scientificName = "Duttaphrynus melanostictus",
+                    confidenceScore = 82,
+                    selected = true
+                )
+            )
+        )
+        val repository = BioRepository(gateway)
+
+        val entry = repository.retryIdentification("retry-record")
+
+        assertEquals("retry-record", gateway.identifiedRecordId)
+        assertEquals("Asian common toad", entry?.commonName)
+        assertEquals("Duttaphrynus melanostictus", entry?.scientificName)
     }
 
     @Test
@@ -320,7 +409,7 @@ class BioRepositoryTest {
 
         assertEquals("record-abc", entry.id)
         assertEquals("upload", entry.sourceType)
-        assertEquals("draft", entry.verificationStatus)
+        assertEquals("failed", entry.verificationStatus)
         assertEquals("user-123/record-abc/original.png", entry.photoUrl)
         assertEquals("user-123/record-abc/original.png", gateway.uploadedPath)
         assertEquals("image/png", gateway.uploadedContentType)
@@ -423,7 +512,8 @@ class BioRepositoryTest {
         id: String = "record-1",
         locationLabel: String = "Mossy Creek",
         speciesProfileId: String? = null,
-        speciesProfile: SpeciesProfileRow? = null
+        speciesProfile: SpeciesProfileRow? = null,
+        verificationStatus: String = "draft"
     ): BioRecordRow {
         return BioRecordRow(
             id = id,
@@ -440,7 +530,7 @@ class BioRepositoryTest {
             locationLabel = locationLabel,
             notes = "Small organism near the waterline.",
             confidenceScore = 87,
-            verificationStatus = "draft",
+            verificationStatus = verificationStatus,
             metadataAvailability = "GPS coordinates available"
         )
     }
@@ -467,7 +557,8 @@ class BioRepositoryTest {
         private val userId: String? = "user-1",
         private val signedUrl: String = "https://signed.example/default.jpg",
         private val identificationCandidates: List<IdentificationCandidateRow> = emptyList(),
-        private val speciesProfiles: List<SpeciesProfileRow> = emptyList()
+        private val speciesProfiles: List<SpeciesProfileRow> = emptyList(),
+        private val identifyError: Throwable? = null
     ) : BioRecordGateway {
         var uploadedPath: String? = null
         var uploadedBytes: ByteArray? = null
@@ -488,11 +579,11 @@ class BioRepositoryTest {
         }
 
         override suspend fun fetchIdentificationCandidates(): List<IdentificationCandidateRow> {
-            return identificationCandidates
+            return identificationCandidates.toList()
         }
 
         override suspend fun fetchSpeciesProfiles(): List<SpeciesProfileRow> {
-            return speciesProfiles + listOfNotNull(upsertedSpeciesProfileRow)
+            return speciesProfiles.toList() + listOfNotNull(upsertedSpeciesProfileRow)
         }
 
         override suspend fun deleteBioRecords(ids: List<String>, photoPaths: List<String>) {
@@ -545,6 +636,7 @@ class BioRepositoryTest {
 
         override suspend fun identifyBioRecordImage(recordId: String): List<IdentificationCandidateRow> {
             identifiedRecordId = recordId
+            identifyError?.let { throw it }
             return identificationCandidates.filter { it.bioRecordId == recordId }
         }
 

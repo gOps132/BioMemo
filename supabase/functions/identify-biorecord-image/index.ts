@@ -90,6 +90,7 @@ Deno.serve(async (request) => {
   const identification = await identifyImage(image);
   if (!identification.ok) {
     console.error("Image identification failed", identification.error);
+    await updateBioRecordStatus(bioRecordId, authHeader, { verification_status: "failed" });
     return jsonResponse({ error: identification.error }, 502);
   }
 
@@ -264,7 +265,7 @@ function parseCandidateResponse(text: string | undefined): Candidate[] | null {
       visible_traits: clean(candidate.visible_traits),
       uncertainty_notes: clean(candidate.uncertainty_notes),
     }))
-    .filter((candidate) => Boolean(candidate.scientific_name));
+    .filter(isUsableCandidate);
 }
 
 function safeParseCandidates(jsonText: string): { candidates?: Candidate[] } | null {
@@ -346,6 +347,32 @@ function boundedConfidence(value: unknown): number | null {
   const numberValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numberValue)) return null;
   return Math.max(0, Math.min(100, Math.round(numberValue)));
+}
+
+function isUsableCandidate(candidate: Candidate) {
+  const scientificName = clean(candidate.scientific_name);
+  if (!scientificName) return false;
+
+  const normalizedScientificName = nameKey(scientificName);
+  const normalizedCommonName = nameKey(candidate.common_name);
+  const genericNames = new Set([
+    "awaiting identification",
+    "unidentified organism",
+    "unidentified object",
+    "unknown organism",
+    "unknown object",
+    "not available",
+  ]);
+
+  return normalizedScientificName.split(" ").length >= 2 &&
+    !genericNames.has(normalizedScientificName) &&
+    !genericNames.has(normalizedCommonName);
+}
+
+function nameKey(value: unknown) {
+  return typeof value === "string"
+    ? value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim()
+    : "";
 }
 
 function candidateSort(left: Candidate, right: Candidate) {

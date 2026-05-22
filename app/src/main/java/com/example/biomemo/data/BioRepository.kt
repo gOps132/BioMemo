@@ -215,6 +215,8 @@ class BioRepository(
     fun observeEntryById(id: String): Flow<BioEntry> {
         return kotlinx.coroutines.flow.flow {
             gateway.observeBioRecord(id).collect { row ->
+                cache.identificationCandidates = null
+                cache.speciesProfiles = null
                 emit(row.toBioEntryWithLookups())
             }
         }
@@ -312,11 +314,27 @@ class BioRepository(
                 metadataRaw = photo.metadata.raw.toJsonObject()
             )
         )
-        val candidates = runCatching { gateway.identifyBioRecordImage(recordId) }.getOrDefault(emptyList())
+        val identificationResult = runCatching { gateway.identifyBioRecordImage(recordId) }
+        val candidates = identificationResult.getOrDefault(emptyList())
         if (candidates.isNotEmpty()) cache.identificationCandidates = null
         val bestCandidate = candidates.bestCandidate()
         val speciesProfile = enrichCandidate(recordId, bestCandidate)
-        return insertedRow.toBioEntry(bestCandidate, speciesProfile)
+        val displayRow = if (identificationResult.isFailure || bestCandidate == null) {
+            insertedRow.copy(verificationStatus = FAILED_STATUS, confidenceScore = null)
+        } else {
+            insertedRow
+        }
+        return displayRow.toBioEntry(bestCandidate, speciesProfile)
+            .also { BioRecordChangeTracker.markChanged() }
+    }
+
+    suspend fun retryIdentification(recordId: String): BioEntry? {
+        val candidates = runCatching { gateway.identifyBioRecordImage(recordId) }.getOrDefault(emptyList())
+        invalidateRecords(includeLookups = true)
+        val row = gateway.fetchBioRecordById(recordId) ?: return null
+        val bestCandidate = candidates.bestCandidate()
+        val speciesProfile = enrichCandidate(recordId, bestCandidate)
+        return row.toBioEntry(bestCandidate, speciesProfile)
             .also { BioRecordChangeTracker.markChanged() }
     }
 
@@ -349,7 +367,7 @@ class BioRepository(
     }
 
     private suspend fun enrichCandidate(recordId: String, candidate: IdentificationCandidateRow?): SpeciesProfileRow? {
-        if (candidate == null || candidate.scientificName == AWAITING_IDENTIFICATION) return null
+        if (candidate == null || !candidate.isUsableForEnrichment()) return null
         cachedSpeciesProfileFor(candidate)?.let { profile ->
             linkCachedSpeciesProfile(recordId, candidate, profile)?.let { return it }
         }
@@ -464,13 +482,18 @@ class BioRepository(
         val metadataLabel = metadataAvailability.ifBlank { "unknown" }
         val sourceLabel = sourceType.ifBlank { "unknown" }
         val species = speciesProfile ?: this.speciesProfile
-        val commonNameLabel = species?.commonName?.takeIf { it.isNotBlank() }
+        val identificationFailed = candidate == null && verificationStatus.equals(FAILED_STATUS, ignoreCase = true)
+        val commonNameLabel = if (identificationFailed) {
+            NO_ORGANISM_COMMON_NAME
+        } else species?.commonName?.takeIf { it.isNotBlank() }
             ?: candidate?.commonName?.takeIf { it.isNotBlank() }
             ?: UNIDENTIFIED_COMMON_NAME
-        val scientificNameLabel = species?.scientificName?.takeIf { it.isNotBlank() }
+        val scientificNameLabel = if (identificationFailed) {
+            IDENTIFICATION_NOT_AVAILABLE
+        } else species?.scientificName?.takeIf { it.isNotBlank() }
             ?: candidate?.scientificName?.takeIf { it.isNotBlank() }
             ?: AWAITING_IDENTIFICATION
-        val confidenceLabel = candidate?.confidenceScore ?: confidenceScore ?: 0
+        val confidenceLabel = if (identificationFailed) 0 else candidate?.confidenceScore ?: confidenceScore ?: 0
         val notesLabel = listOfNotNull(
             notes?.takeIf { it.isNotBlank() },
             candidate?.reasoning?.takeIf { it.isNotBlank() },
@@ -497,15 +520,21 @@ class BioRepository(
             savedDate = savedLabel,
             verificationStatus = statusLabel,
             metadataAvailability = metadataLabel,
-            taxonomy = species?.taxonomy.presentOrNull() ?: NOT_ENRICHED,
-            habitat = species?.habitat.presentOrNull() ?: NOT_ENRICHED,
-            diet = species?.diet.presentOrNull() ?: NOT_ENRICHED,
-            lifespan = species?.lifespan.presentOrNull() ?: NOT_ENRICHED,
-            distribution = species?.distribution.presentOrNull() ?: NOT_ENRICHED,
-            conservationStatus = species?.conservationStatus.presentOrNull() ?: NOT_ENRICHED,
+            taxonomy = species?.taxonomy.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
+            habitat = species?.habitat.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
+            diet = species?.diet.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
+            lifespan = species?.lifespan.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
+            distribution = species?.distribution.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
+            conservationStatus = species?.conservationStatus.presentOrNull() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED,
             sourceApi = species?.sourceApi.presentOrNull()
-                ?: if (candidate == null) "Pending identification" else "OpenAI image identification",
-            lastEnrichedDate = species?.lastEnrichedAt?.toDisplayDate() ?: NOT_ENRICHED
+                ?: if (identificationFailed) {
+                    IDENTIFICATION_FAILED_SOURCE
+                } else if (candidate == null) {
+                    "Pending identification"
+                } else {
+                    "OpenAI image identification"
+                },
+            lastEnrichedDate = species?.lastEnrichedAt?.toDisplayDate() ?: if (identificationFailed) ENRICHMENT_UNAVAILABLE else NOT_ENRICHED
         )
     }
 
@@ -523,6 +552,11 @@ class BioRepository(
         const val UNIDENTIFIED_COMMON_NAME = "Unidentified organism"
         const val AWAITING_IDENTIFICATION = "Awaiting identification"
         const val NOT_ENRICHED = "Not enriched yet"
+        const val FAILED_STATUS = "failed"
+        const val NO_ORGANISM_COMMON_NAME = "No organism identified"
+        const val IDENTIFICATION_NOT_AVAILABLE = "Not available"
+        const val IDENTIFICATION_FAILED_SOURCE = "Identification failed or found no organism."
+        const val ENRICHMENT_UNAVAILABLE = "Unavailable until an organism is identified"
         val DISPLAY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
     }
 }
@@ -580,6 +614,23 @@ private fun List<IdentificationCandidateRow>?.bestCandidate(): IdentificationCan
                 .thenByDescending { it.confidenceScore ?: -1 }
         )
         ?.firstOrNull()
+}
+
+private fun IdentificationCandidateRow.isUsableForEnrichment(): Boolean {
+    val normalizedScientificName = scientificName.speciesNameKey()
+    val normalizedCommonName = commonName.orEmpty().speciesNameKey()
+    val genericNames = setOf(
+        "awaiting identification",
+        "unidentified organism",
+        "unidentified object",
+        "unknown organism",
+        "unknown object",
+        "not available"
+    )
+    return normalizedScientificName.isNotBlank() &&
+        normalizedScientificName !in genericNames &&
+        normalizedCommonName !in genericNames &&
+        normalizedScientificName.split(" ").size >= 2
 }
 
 private fun Map<String, String>.toJsonObject(): JsonObject {
@@ -681,25 +732,38 @@ class SupabaseBioRecordGateway(
             table = "species_profiles"
         }
 
+        val candidateChannel = client.channel("bio-record-$id-candidates")
+        val candidateChanges = candidateChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "identification_candidates"
+            filter("bio_record_id", FilterOperator.EQ, id)
+        }
+
         val recordJob = launch {
             recordChanges.collect { sendLatest() }
         }
         val speciesJob = launch {
             speciesChanges.collect { sendLatest() }
         }
+        val candidateJob = launch {
+            candidateChanges.collect { sendLatest() }
+        }
 
         sendLatest()
         recordChannel.subscribe(blockUntilSubscribed = true)
         speciesChannel.subscribe(blockUntilSubscribed = true)
+        candidateChannel.subscribe(blockUntilSubscribed = true)
 
         awaitClose {
             recordJob.cancel()
             speciesJob.cancel()
+            candidateJob.cancel()
             CoroutineScope(Dispatchers.IO).launch {
                 runCatching { recordChannel.unsubscribe() }
                 runCatching { speciesChannel.unsubscribe() }
+                runCatching { candidateChannel.unsubscribe() }
                 runCatching { client.realtime.removeChannel(recordChannel) }
                 runCatching { client.realtime.removeChannel(speciesChannel) }
+                runCatching { client.realtime.removeChannel(candidateChannel) }
             }
         }
     }
