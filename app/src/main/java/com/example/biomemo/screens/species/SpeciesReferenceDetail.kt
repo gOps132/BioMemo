@@ -1,7 +1,7 @@
 package com.example.biomemo.screens.species
 
-import com.example.biomemo.data.SpeciesSearchResult
-import com.example.biomemo.data.SpeciesEnrichmentPreview
+import com.example.biomemo.features.species.domain.SpeciesEnrichmentPreview
+import com.example.biomemo.features.species.domain.SpeciesSearchResult
 
 data class SpeciesReferenceDetail(
     val title: String,

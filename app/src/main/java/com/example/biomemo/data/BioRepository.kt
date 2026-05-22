@@ -1,11 +1,14 @@
 package com.example.biomemo.data
 
+import com.example.biomemo.features.species.data.SpeciesSourceRepository
+import com.example.biomemo.features.species.domain.SpeciesRepository
+import com.example.biomemo.features.species.domain.SpeciesSearchResult
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
 class BioRepository(
     private val gateway: BioRecordGateway = SupabaseBioRecordGateway(),
-    private val speciesRepository: SpeciesSourceRepository = SpeciesSourceRepository(),
+    private val speciesRepository: SpeciesRepository = SpeciesSourceRepository(),
     private val cache: BioRepositoryCache = if (gateway is SupabaseBioRecordGateway) {
         BioRepositoryCache.shared
     } else {

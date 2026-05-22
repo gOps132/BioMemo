@@ -19,8 +19,8 @@ import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRecordUseCases
-import com.example.biomemo.data.SpeciesSearchResult
-import com.example.biomemo.data.SpeciesSourceRepository
+import com.example.biomemo.features.species.domain.SpeciesSearchResult
+import com.example.biomemo.features.species.domain.SpeciesUseCases
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
 import com.example.biomemo.screens.species.SpeciesReferenceDetailActivity
 import com.example.biomemo.ui.BioImageLoader
@@ -34,11 +34,11 @@ import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
     private val bioRecordUseCases = BioRecordUseCases()
-    private val speciesRepository = SpeciesSourceRepository()
+    private val speciesUseCases = SpeciesUseCases()
     private val presenter = SearchPresenter(
         loadBioRecords = { bioRecordUseCases.loadRecords() },
         searchBioRecords = { query -> bioRecordUseCases.searchRecords(query) },
-        searchSpecies = { query -> speciesRepository.searchSpecies(query) },
+        searchSpecies = { query -> speciesUseCases.searchSpecies(query) },
         loadSuggestions = { bioRecordUseCases.getSearchSuggestions() }
     )
     private val searchScope = CoroutineScope(Dispatchers.Main + Job())

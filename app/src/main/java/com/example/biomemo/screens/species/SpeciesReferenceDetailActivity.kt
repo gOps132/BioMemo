@@ -10,8 +10,8 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
-import com.example.biomemo.data.SpeciesSearchResult
-import com.example.biomemo.data.SpeciesSourceRepository
+import com.example.biomemo.features.species.domain.SpeciesSearchResult
+import com.example.biomemo.features.species.domain.SpeciesUseCases
 import com.example.biomemo.ui.BioImageLoader
 import com.example.biomemo.ui.applyRoundedCorners
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class SpeciesReferenceDetailActivity : AppCompatActivity() {
-    private val speciesRepository = SpeciesSourceRepository()
+    private val speciesUseCases = SpeciesUseCases()
     private val speciesScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +36,7 @@ class SpeciesReferenceDetailActivity : AppCompatActivity() {
 
     private fun loadEnrichment(species: SpeciesSearchResult) {
         speciesScope.launch {
-            val enrichment = runCatching { speciesRepository.previewEnrichment(species) }.getOrNull()
+            val enrichment = runCatching { speciesUseCases.previewEnrichment(species) }.getOrNull()
             if (enrichment != null) {
                 renderDetail(species.toSpeciesReferenceDetail(enrichment))
             }
