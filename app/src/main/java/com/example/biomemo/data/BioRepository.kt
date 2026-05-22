@@ -26,7 +26,7 @@ class BioRepository(
         if (rows.isEmpty()) return emptyList()
         val candidatesByRecord = fetchIdentificationCandidates().groupBy { it.bioRecordId }
         val speciesProfilesById = fetchSpeciesProfiles().associateBy { it.id }
-        return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
+        return rows.map { row -> row.toBioRecord(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]).toBioEntry() }
             .also { cache.entries = it }
     }
 
@@ -43,7 +43,7 @@ class BioRepository(
         if (rows.isEmpty()) return emptyList()
         val candidatesByRecord = fetchIdentificationCandidates().groupBy { it.bioRecordId }
         val speciesProfilesById = fetchSpeciesProfiles().associateBy { it.id }
-        return rows.map { row -> row.toBioEntry(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]) }
+        return rows.map { row -> row.toBioRecord(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]).toBioEntry() }
     }
 
     suspend fun getEntryById(id: String): BioEntry? {
@@ -54,7 +54,7 @@ class BioRepository(
         val profile = row.speciesProfileId?.let { profileId ->
             fetchSpeciesProfiles().firstOrNull { it.id == profileId }
         }
-        return row.toBioEntry(candidate, profile)
+        return row.toBioRecord(candidate, profile).toBioEntry()
     }
 
     fun observeEntryById(id: String): Flow<BioEntry> {
@@ -169,7 +169,7 @@ class BioRepository(
         } else {
             insertedRow
         }
-        return displayRow.toBioEntry(bestCandidate, speciesProfile)
+        return displayRow.toBioRecord(bestCandidate, speciesProfile).toBioEntry()
             .also { BioRecordChangeTracker.markChanged() }
     }
 
@@ -179,7 +179,7 @@ class BioRepository(
         val row = gateway.fetchBioRecordById(recordId) ?: return null
         val bestCandidate = candidates.bestCandidate()
         val speciesProfile = enrichCandidate(recordId, bestCandidate)
-        return row.toBioEntry(bestCandidate, speciesProfile)
+        return row.toBioRecord(bestCandidate, speciesProfile).toBioEntry()
             .also { BioRecordChangeTracker.markChanged() }
     }
 
@@ -190,15 +190,16 @@ class BioRepository(
             val candidate = fetchIdentificationCandidates()
                 .filter { it.bioRecordId == recordId }
                 .bestCandidate()
-            return row.toBioEntry(candidate, existingProfile)
+            return row.toBioRecord(candidate, existingProfile).toBioEntry()
         }
         val candidate = fetchIdentificationCandidates()
             .filter { it.bioRecordId == recordId }
             .bestCandidate()
-            ?: return row.toBioEntry(null, null)
+            ?: return row.toBioRecord(null, null).toBioEntry()
         val profile = enrichCandidate(recordId, candidate)
         return row.copy(speciesProfileId = profile?.id ?: row.speciesProfileId)
-            .toBioEntry(candidate, profile)
+            .toBioRecord(candidate, profile)
+            .toBioEntry()
             .also { if (profile != null) BioRecordChangeTracker.markChanged() }
     }
 
@@ -313,7 +314,7 @@ class BioRepository(
         val profile = speciesProfile ?: speciesProfileId?.let { profileId ->
             fetchSpeciesProfiles().firstOrNull { it.id == profileId }
         }
-        return toBioEntry(candidate, profile)
+        return toBioRecord(candidate, profile).toBioEntry()
     }
 
     private fun invalidateRecords(includeLookups: Boolean = false) {
