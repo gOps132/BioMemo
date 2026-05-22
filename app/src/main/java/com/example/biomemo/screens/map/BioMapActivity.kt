@@ -281,29 +281,14 @@ class BioMapActivity : AppCompatActivity() {
 
     private fun buildClusters(pins: List<BioMapPin>): List<BioMapCluster> {
         val zoom = mapView.zoomLevelDouble
-        if (zoom >= CLUSTER_DISABLE_ZOOM) return pins.map { pin -> BioMapCluster(listOf(pin), pin.latitude, pin.longitude) }
+        if (zoom >= CLUSTER_DISABLE_ZOOM) return BioMapClusterer.buildSinglePinClusters(pins)
         val radiusPx = dp(clusterRadiusDp(zoom))
         val projection = mapView.projection
-        val assigned = mutableSetOf<String>()
-        val clusters = mutableListOf<BioMapCluster>()
-        val pinPoints = pins.associateWith { pin -> projection.toPixels(GeoPoint(pin.latitude, pin.longitude), Point()) }
-
-        pins.forEach { pin ->
-            if (pin.id in assigned) return@forEach
-            val origin = pinPoints.getValue(pin)
-            val group = pins.filter { candidate ->
-                if (candidate.id in assigned) return@filter false
-                val point = pinPoints.getValue(candidate)
-                distanceSquared(origin, point) <= radiusPx * radiusPx
-            }
-            assigned += group.map { it.id }
-            clusters += BioMapCluster(
-                pins = group,
-                latitude = group.map { it.latitude }.average(),
-                longitude = group.map { it.longitude }.average()
-            )
+        val projectedPins = pins.map { pin ->
+            val point = projection.toPixels(GeoPoint(pin.latitude, pin.longitude), Point())
+            BioMapProjectedPin(pin = pin, x = point.x, y = point.y)
         }
-        return clusters
+        return BioMapClusterer.buildClusters(projectedPins, radiusPx)
     }
 
     private fun createClusterDrawable(count: Int): BitmapDrawable {
@@ -422,12 +407,6 @@ class BioMapActivity : AppCompatActivity() {
         else -> 62
     }
 
-    private fun distanceSquared(first: Point, second: Point): Int {
-        val dx = first.x - second.x
-        val dy = first.y - second.y
-        return dx * dx + dy * dy
-    }
-
     private fun cartoLightTileSource(): XYTileSource = XYTileSource(
         "CartoLight",
         1,
@@ -457,9 +436,3 @@ class BioMapActivity : AppCompatActivity() {
         private const val MARKER_IMAGE_LOAD_DP = 96
     }
 }
-
-private data class BioMapCluster(
-    val pins: List<BioMapPin>,
-    val latitude: Double,
-    val longitude: Double
-)

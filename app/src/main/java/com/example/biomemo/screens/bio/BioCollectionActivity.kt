@@ -38,7 +38,7 @@ class BioCollectionActivity : AppCompatActivity() {
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
     private var entries: List<BioEntry> = emptyList()
     private var sortMode: BioCollectionSort = BioCollectionSort.NEWEST
-    private val selectedEntryIds = linkedSetOf<String>()
+    private val selectionState = BioCollectionSelectionState()
     private val expandedNoteIds = linkedSetOf<String>()
     private lateinit var refreshProgress: ProgressBar
     private lateinit var entriesList: RecyclerView
@@ -56,7 +56,10 @@ class BioCollectionActivity : AppCompatActivity() {
         MainBottomNav.setup(this, MainNavDestination.RECORDS, navUsername)
         refreshProgress = findViewById(R.id.progressBioCollectionRefresh)
         emptyText = findViewById(R.id.textviewBioCollectionEmpty)
-        entriesAdapter = BioEntryAdapter()
+        entriesAdapter = BioEntryAdapter(
+            createViewHolder = { createEntryViewHolder() },
+            bindViewHolder = { holder, entry -> populateEntryCard(holder.card, holder, entry) }
+        )
         entriesList = findViewById<RecyclerView>(R.id.recyclerviewBioEntries).apply {
             layoutManager = LinearLayoutManager(this@BioCollectionActivity)
             adapter = entriesAdapter
@@ -126,7 +129,7 @@ class BioCollectionActivity : AppCompatActivity() {
 
     private fun applyEntries(refreshedEntries: List<BioEntry>) {
         entries = refreshedEntries
-        selectedEntryIds.retainAll(entries.map { it.id }.toSet())
+        selectionState.retainVisibleIds(entries.map { it.id })
         renderCollection()
     }
 
@@ -139,15 +142,15 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun renderActions() {
-        findViewById<TextView>(R.id.textviewBioCollectionSubtitle).text = if (selectedEntryIds.isEmpty()) {
+        findViewById<TextView>(R.id.textviewBioCollectionSubtitle).text = if (selectionState.isEmpty) {
             "${entries.size} records · hold a record to select"
         } else {
-            "${selectedEntryIds.size} selected"
+            "${selectionState.count} selected"
         }
         findViewById<LinearLayout>(R.id.linearlayoutBioCollectionActions).apply {
             removeAllViews()
             addView(sortRow())
-            if (selectedEntryIds.isNotEmpty()) addView(selectionActionRow())
+            if (!selectionState.isEmpty) addView(selectionActionRow())
         }
     }
 
@@ -185,21 +188,20 @@ class BioCollectionActivity : AppCompatActivity() {
             ).apply { bottomMargin = dp(4) }
             addView(button("Select all", R.drawable.bg_chip, R.color.bio_forest_700).apply {
                 setOnClickListener {
-                    selectedEntryIds.clear()
-                    selectedEntryIds += entries.map { it.id }
+                    selectionState.selectAll(entries.map { it.id })
                     renderCollection()
                 }
             })
             addView(button("Open", R.drawable.bg_chip_outline, R.color.bio_forest_700).apply {
-                isEnabled = selectedEntryIds.size == 1
+                isEnabled = selectionState.count == 1
                 alpha = if (isEnabled) 1f else 0.45f
                 setOnClickListener {
-                    entries.firstOrNull { it.id == selectedEntryIds.firstOrNull() }?.let(::openBioRecord)
+                    entries.firstOrNull { it.id == selectionState.singleSelectedId() }?.let(::openBioRecord)
                 }
             })
             addView(button("Clear", R.drawable.bg_chip_outline, R.color.bio_forest_700).apply {
                 setOnClickListener {
-                    selectedEntryIds.clear()
+                    selectionState.clear()
                     renderCollection()
                 }
             })
@@ -223,10 +225,10 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun populateEntryCard(card: LinearLayout, holder: BioEntryViewHolder, entry: BioEntry) {
-        val isSelected = entry.id in selectedEntryIds
+        val isSelected = selectionState.contains(entry.id)
         card.setBackgroundResource(if (isSelected) R.drawable.bg_card_selected else R.drawable.bg_card_elevated)
         card.setOnClickListener {
-            if (selectedEntryIds.isEmpty()) {
+            if (selectionState.isEmpty) {
                 openBioRecord(entry)
             } else {
                 toggleSelection(entry)
@@ -302,12 +304,12 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun toggleSelection(entry: BioEntry) {
-        if (entry.id in selectedEntryIds) selectedEntryIds.remove(entry.id) else selectedEntryIds.add(entry.id)
+        selectionState.toggle(entry.id)
         renderCollection()
     }
 
     private fun confirmDeleteSelected() {
-        val deleteIds = selectedEntryIds.toList()
+        val deleteIds = selectionState.ids()
         if (deleteIds.isEmpty()) return
         AlertDialog.Builder(this)
             .setTitle("Delete BioRecords?")
@@ -323,7 +325,7 @@ class BioCollectionActivity : AppCompatActivity() {
                 bioRecordUseCases.deleteRecords(ids)
             }.onSuccess { count ->
                 entries = entries.filterNot { it.id in ids }
-                selectedEntryIds.clear()
+                selectionState.clear()
                 renderCollection()
                 Toast.makeText(this@BioCollectionActivity, "Deleted $count BioRecord${if (count == 1) "" else "s"}", Toast.LENGTH_SHORT).show()
             }.onFailure { error ->
@@ -411,66 +413,9 @@ class BioCollectionActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private inner class BioEntryAdapter : RecyclerView.Adapter<BioEntryViewHolder>() {
-        private var currentEntries: List<BioEntry> = emptyList()
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BioEntryViewHolder = createEntryViewHolder()
-
-        override fun onBindViewHolder(holder: BioEntryViewHolder, position: Int) {
-            populateEntryCard(holder.card, holder, currentEntries[position])
-        }
-
-        override fun getItemCount(): Int = currentEntries.size
-
-        fun submitEntries(nextEntries: List<BioEntry>) {
-            currentEntries = nextEntries
-            notifyDataSetChanged()
-        }
-    }
-
-    private class BioEntryViewHolder(
-        val card: LinearLayout,
-        val thumbnail: ImageView,
-        val commonName: TextView,
-        val scientificName: TextView,
-        val category: TextView,
-        val location: TextView,
-        val tags: TextView,
-        val notes: TextView,
-        val more: TextView
-    ) : RecyclerView.ViewHolder(card)
-
     private companion object {
         const val NOTE_PREVIEW_MAX_LENGTH = 180
     }
 }
 
-private enum class BioCollectionSort(val label: String) {
-    NEWEST("Newest"),
-    COMMON_NAME("Name"),
-    SCIENTIFIC_NAME("Scientific"),
-    CONFIDENCE("Match"),
-    LOCATION("Location"),
-    TAGS("Tags");
-
-    fun background(activeMode: BioCollectionSort): Int {
-        return if (this == activeMode) R.drawable.bg_chip else R.drawable.bg_chip_outline
-    }
-
-    fun textColor(activeMode: BioCollectionSort): Int {
-        return if (this == activeMode) R.color.bio_forest_900 else R.color.bio_forest_700
-    }
-}
-
 private const val PULL_REFRESH_DISTANCE_DP = 96
-
-private fun List<BioEntry>.sortedByMode(mode: BioCollectionSort): List<BioEntry> {
-    return when (mode) {
-        BioCollectionSort.NEWEST -> sortedByDescending { it.savedDate.ifBlank { it.observedDate } }
-        BioCollectionSort.COMMON_NAME -> sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.commonName })
-        BioCollectionSort.SCIENTIFIC_NAME -> sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.scientificName })
-        BioCollectionSort.CONFIDENCE -> sortedByDescending { it.confidence }
-        BioCollectionSort.LOCATION -> sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.location })
-        BioCollectionSort.TAGS -> sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.tags.joinToString(" ") })
-    }
-}
