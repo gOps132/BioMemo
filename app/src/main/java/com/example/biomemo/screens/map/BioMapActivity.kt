@@ -18,7 +18,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.biomemo.R
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 
 class BioMapActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
-    private val repository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
     private var currentPins: List<BioMapPin> = emptyList()
     private val activeMarkers = mutableListOf<Marker>()
@@ -123,7 +123,7 @@ class BioMapActivity : AppCompatActivity() {
 
     private fun observeMapState() {
         bioScope.launch {
-            repository.observeAllEntries().collectLatest { entries ->
+            bioRecordUseCases.observeRecords().collectLatest { entries ->
                 val state = BioMapModel.fromEntries(entries)
                 if (!hasLoadedInitialMapState) {
                     setupMap(state)
@@ -262,7 +262,7 @@ class BioMapActivity : AppCompatActivity() {
                 photoRef = trimmedUrl,
                 targetWidthPx = dp(MARKER_IMAGE_LOAD_DP),
                 targetHeightPx = dp(MARKER_IMAGE_LOAD_DP),
-                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
             )
             loadingPhotoUrls.remove(trimmedUrl)
             thumbnailBitmaps[trimmedUrl] = bitmap

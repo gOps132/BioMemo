@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.data.BioStats
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private lateinit var presenter: DashboardPresenter
     private var currentUsername: String = ""
-    private val bioRepository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
     private lateinit var recentAdapter: RecentBioRecordAdapter
 
@@ -55,7 +55,7 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
 
     private fun observeDashboardData() {
         bioScope.launch {
-            bioRepository.observeAllEntries().collectLatest { entries ->
+            bioRecordUseCases.observeRecords().collectLatest { entries ->
                 val stats = entries.toStats()
                 findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
                 findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
@@ -165,7 +165,7 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
                 photoRef = entry.photoUrl,
                 targetWidthPx = dp(148),
                 targetHeightPx = dp(148),
-                signedUrlResolver = { path -> bioRepository.createSignedPhotoUrl(path) }
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
             )
             if (bitmap != null && imageView.tag == entry.photoUrl) {
                 imageView.setPadding(0, 0, 0, 0)

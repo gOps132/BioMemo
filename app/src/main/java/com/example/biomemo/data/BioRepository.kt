@@ -12,7 +12,7 @@ class BioRepository(
         BioRepositoryCache()
     },
     private val recordIdProvider: () -> String = { UUID.randomUUID().toString() }
-) {
+) : BioRecordRepository {
     private val store by lazy {
         BioRecordStore(
             remoteChanges = { gateway.observeBioRecordChanges() },
@@ -20,7 +20,7 @@ class BioRepository(
         )
     }
 
-    suspend fun getAllEntries(): List<BioEntry> {
+    override suspend fun getAllEntries(): List<BioEntry> {
         cache.entries?.let { return it }
         val rows = fetchBioRecords()
         if (rows.isEmpty()) return emptyList()
@@ -30,15 +30,15 @@ class BioRepository(
             .also { cache.entries = it }
     }
 
-    suspend fun refreshAllEntries(): List<BioEntry> {
+    override suspend fun refreshAllEntries(): List<BioEntry> {
         return store.refreshAllEntries()
     }
 
-    fun observeAllEntries(): Flow<List<BioEntry>> {
+    override fun observeAllEntries(): Flow<List<BioEntry>> {
         return store.observeAllEntries()
     }
 
-    suspend fun getRecentEntries(limit: Int = 2): List<BioEntry> {
+    override suspend fun getRecentEntries(limit: Int): List<BioEntry> {
         val rows = fetchBioRecords(limit)
         if (rows.isEmpty()) return emptyList()
         val candidatesByRecord = fetchIdentificationCandidates().groupBy { it.bioRecordId }
@@ -46,7 +46,7 @@ class BioRepository(
         return rows.map { row -> row.toBioRecord(candidatesByRecord[row.id].bestCandidate(), speciesProfilesById[row.speciesProfileId]).toBioEntry() }
     }
 
-    suspend fun getEntryById(id: String): BioEntry? {
+    override suspend fun getEntryById(id: String): BioEntry? {
         val row = gateway.fetchBioRecordById(id) ?: return null
         val candidate = fetchIdentificationCandidates()
             .filter { it.bioRecordId == id }
@@ -57,7 +57,7 @@ class BioRepository(
         return row.toBioRecord(candidate, profile).toBioEntry()
     }
 
-    fun observeEntryById(id: String): Flow<BioEntry> {
+    override fun observeEntryById(id: String): Flow<BioEntry> {
         return kotlinx.coroutines.flow.flow {
             gateway.observeBioRecord(id).collect { row ->
                 cache.identificationCandidates = null
@@ -67,7 +67,7 @@ class BioRepository(
         }
     }
 
-    suspend fun getStats(): BioStats {
+    override suspend fun getStats(): BioStats {
         val entries = getAllEntries()
         val identifiedSpecies = entries
             .map { it.scientificName }
@@ -82,7 +82,7 @@ class BioRepository(
         )
     }
 
-    suspend fun search(query: String): List<BioEntry> {
+    override suspend fun search(query: String): List<BioEntry> {
         val entries = getAllEntries()
         val normalizedQuery = query.trim().lowercase()
         if (normalizedQuery.isEmpty()) return entries
@@ -102,7 +102,7 @@ class BioRepository(
         }
     }
 
-    suspend fun getSearchSuggestions(limit: Int = 8): List<String> {
+    override suspend fun getSearchSuggestions(limit: Int): List<String> {
         val entries = getAllEntries()
         val candidates = fetchIdentificationCandidates()
         val profiles = fetchSpeciesProfiles()
@@ -115,7 +115,7 @@ class BioRepository(
             .take(limit)
     }
 
-    suspend fun deleteEntries(ids: Collection<String>): Int {
+    override suspend fun deleteEntries(ids: Collection<String>): Int {
         val distinctIds = ids.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (distinctIds.isEmpty()) return 0
         val rowsToDelete = fetchBioRecords().filter { it.id in distinctIds }
@@ -128,7 +128,7 @@ class BioRepository(
         return distinctIds.size
     }
 
-    suspend fun createDraftUploadRecord(photo: BioRecordPhotoUpload): BioEntry {
+    override suspend fun createDraftUploadRecord(photo: BioRecordPhotoUpload): BioEntry {
         val userId = gateway.currentUserId() ?: error("Sign in before uploading BioRecord photos.")
         val recordId = recordIdProvider()
         val photoPath = BioRecordPhotoPath.forOriginal(userId, recordId, photo.contentType)
@@ -173,7 +173,7 @@ class BioRepository(
             .also { BioRecordChangeTracker.markChanged() }
     }
 
-    suspend fun retryIdentification(recordId: String): BioEntry? {
+    override suspend fun retryIdentification(recordId: String): BioEntry? {
         val candidates = runCatching { gateway.identifyBioRecordImage(recordId) }.getOrDefault(emptyList())
         invalidateRecords(includeLookups = true)
         val row = gateway.fetchBioRecordById(recordId) ?: return null
@@ -183,7 +183,7 @@ class BioRepository(
             .also { BioRecordChangeTracker.markChanged() }
     }
 
-    suspend fun enrichBioRecordSpecies(recordId: String): BioEntry? {
+    override suspend fun enrichBioRecordSpecies(recordId: String): BioEntry? {
         val row = fetchBioRecords().firstOrNull { it.id == recordId } ?: return null
         val existingProfile = row.speciesProfileId?.let { id -> fetchSpeciesProfiles().firstOrNull { it.id == id } }
         if (existingProfile != null) {
@@ -203,7 +203,7 @@ class BioRepository(
             .also { if (profile != null) BioRecordChangeTracker.markChanged() }
     }
 
-    suspend fun createSignedPhotoUrl(path: String): String {
+    override suspend fun createSignedPhotoUrl(path: String): String {
         require(path.isNotBlank()) { "Photo path is missing." }
         cache.signedPhotoUrls[path]
             ?.takeIf { it.isFresh() }

@@ -13,7 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.data.remote.ProfileResult
 import com.example.biomemo.data.remote.SupabaseProfileRepository
 import com.example.biomemo.screens.map.BioMapActivity
@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class BioRecordDetailActivity : AppCompatActivity() {
-    private val repository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val profileRepository = SupabaseProfileRepository()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
@@ -40,7 +40,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
         val entryId = intent.getStringExtra(EXTRA_ENTRY_ID).orEmpty()
         bioScope.launch {
-            val entry = repository.getEntryById(entryId)
+            val entry = bioRecordUseCases.getRecordDetail(entryId)
             if (entry == null) {
                 Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()
                 finish()
@@ -51,12 +51,12 @@ class BioRecordDetailActivity : AppCompatActivity() {
             val shouldEnrich = entry.taxonomy == NOT_ENRICHED && entry.scientificName != AWAITING_IDENTIFICATION
             renderEntry(entry, username)
             if (shouldEnrich) {
-                repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
+                bioRecordUseCases.enrichSpecies(entry.id)?.let { enrichedEntry ->
                     renderEntry(enrichedEntry, username)
                 }
             }
             bioScope.launch {
-                repository.observeEntryById(entryId).collectLatest { updatedEntry ->
+                bioRecordUseCases.observeRecordDetail(entryId).collectLatest { updatedEntry ->
                     renderEntry(updatedEntry, username)
                 }
             }
@@ -74,7 +74,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 BioImagePreviewDialog.show(
                     activity = this,
                     photoRef = entry.photoUrl,
-                    signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+                    signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
                 )
             }
         }
@@ -133,7 +133,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 photoRef = entry.photoUrl,
                 targetWidthPx = resources.displayMetrics.widthPixels,
                 targetHeightPx = dp(320),
-                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
             )
             if (bitmap != null) {
                 imageView.setPadding(0, 0, 0, 0)
@@ -175,7 +175,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 text = "Retrying"
                 bioScope.launch {
                     val retriedEntry = runCatching {
-                        repository.retryIdentification(entry.id)
+                        bioRecordUseCases.retryIdentification(entry.id)
                     }.getOrNull()
                     if (retriedEntry == null) {
                         Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()

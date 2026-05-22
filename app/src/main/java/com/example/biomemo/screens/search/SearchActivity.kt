@@ -18,7 +18,7 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
@@ -33,13 +33,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
-    private val bioRepository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val speciesRepository = SpeciesSourceRepository()
     private val presenter = SearchPresenter(
-        loadBioRecords = { bioRepository.getAllEntries() },
-        searchBioRecords = { query -> bioRepository.search(query) },
+        loadBioRecords = { bioRecordUseCases.loadRecords() },
+        searchBioRecords = { query -> bioRecordUseCases.searchRecords(query) },
         searchSpecies = { query -> speciesRepository.searchSpecies(query) },
-        loadSuggestions = { bioRepository.getSearchSuggestions() }
+        loadSuggestions = { bioRecordUseCases.getSearchSuggestions() }
     )
     private val searchScope = CoroutineScope(Dispatchers.Main + Job())
     private var searchJob: Job? = null
@@ -79,7 +79,7 @@ class SearchActivity : AppCompatActivity() {
 
     private fun observeBioRecords() {
         searchScope.launch {
-            bioRepository.observeAllEntries().collectLatest {
+            bioRecordUseCases.observeRecords().collectLatest {
                 if (::searchField.isInitialized) {
                     runSearch(searchField.text?.toString().orEmpty())
                 }
@@ -267,7 +267,7 @@ class SearchActivity : AppCompatActivity() {
                 photoRef = entry.photoUrl,
                 targetWidthPx = dp(136),
                 targetHeightPx = dp(136),
-                signedUrlResolver = { path -> bioRepository.createSignedPhotoUrl(path) }
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
             )
             if (bitmap != null && imageView.tag == entry.photoUrl) {
                 imageView.setPadding(0, 0, 0, 0)

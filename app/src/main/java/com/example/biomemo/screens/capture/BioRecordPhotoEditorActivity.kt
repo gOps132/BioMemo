@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioRecordPhotoMetadata
 import com.example.biomemo.data.BioRecordPhotoUpload
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 
 class BioRecordPhotoEditorActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
-    private val repository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val locationProvider = BioRecordCurrentLocationProvider(this)
     private lateinit var cropView: CropPhotoView
     private lateinit var uploadAction: TextView
@@ -96,7 +96,7 @@ class BioRecordPhotoEditorActivity : AppCompatActivity() {
                         metadata = metadata
                     )
                 }
-                repository.createDraftUploadRecord(
+                bioRecordUseCases.createDraftRecord(
                     BioRecordPhotoUpload(
                         bytes = compressedPhoto.bytes,
                         contentType = compressedPhoto.contentType,

@@ -21,7 +21,7 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
+import com.example.biomemo.data.BioRecordUseCases
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
 import com.example.biomemo.ui.roundedImageView
@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class BioCollectionActivity : AppCompatActivity() {
-    private val repository = BioRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
     private var entries: List<BioEntry> = emptyList()
     private var sortMode: BioCollectionSort = BioCollectionSort.NEWEST
@@ -102,7 +102,7 @@ class BioCollectionActivity : AppCompatActivity() {
         bioScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    repository.refreshAllEntries()
+                    bioRecordUseCases.refreshRecords()
                 }
             }.onSuccess { refreshedEntries ->
                 applyEntries(refreshedEntries)
@@ -116,7 +116,7 @@ class BioCollectionActivity : AppCompatActivity() {
 
     private fun observeEntries() {
         bioScope.launch {
-            repository.observeAllEntries().collectLatest { refreshedEntries ->
+            bioRecordUseCases.observeRecords().collectLatest { refreshedEntries ->
                 applyEntries(refreshedEntries)
                 isRefreshing = false
                 refreshProgress.visibility = View.GONE
@@ -320,7 +320,7 @@ class BioCollectionActivity : AppCompatActivity() {
     private fun deleteSelected(ids: List<String>) {
         bioScope.launch {
             runCatching {
-                repository.deleteEntries(ids)
+                bioRecordUseCases.deleteRecords(ids)
             }.onSuccess { count ->
                 entries = entries.filterNot { it.id in ids }
                 selectedEntryIds.clear()
@@ -361,7 +361,7 @@ class BioCollectionActivity : AppCompatActivity() {
                 photoRef = entry.photoUrl,
                 targetWidthPx = dp(148),
                 targetHeightPx = dp(148),
-                signedUrlResolver = { path -> repository.createSignedPhotoUrl(path) }
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
             )
             if (bitmap != null && imageView.tag == entry.photoUrl) {
                 imageView.setPadding(0, 0, 0, 0)
