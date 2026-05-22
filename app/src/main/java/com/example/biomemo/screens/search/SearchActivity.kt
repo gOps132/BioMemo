@@ -18,7 +18,6 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceRepository
@@ -30,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
@@ -45,7 +45,6 @@ class SearchActivity : AppCompatActivity() {
     private var searchJob: Job? = null
     private lateinit var searchField: EditText
     private lateinit var searchAdapter: SearchResultsAdapter
-    private var observedBioRecordVersion = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,21 +66,24 @@ class SearchActivity : AppCompatActivity() {
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
+        observeBioRecords()
         runSearch("")
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (::searchField.isInitialized && observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
-            runSearch(searchField.text?.toString().orEmpty())
-        }
     }
 
     private fun runSearch(query: String) {
         searchJob?.cancel()
         searchJob = searchScope.launch {
             renderState(presenter.search(query))
-            observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
+        }
+    }
+
+    private fun observeBioRecords() {
+        searchScope.launch {
+            bioRepository.observeAllEntries().collectLatest {
+                if (::searchField.isInitialized) {
+                    runSearch(searchField.text?.toString().orEmpty())
+                }
+            }
         }
     }
 

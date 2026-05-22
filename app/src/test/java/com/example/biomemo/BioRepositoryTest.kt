@@ -16,13 +16,17 @@ import com.example.biomemo.data.SpeciesProfileRow
 import com.example.biomemo.data.SpeciesSearchResult
 import com.example.biomemo.data.SpeciesSourceGateway
 import com.example.biomemo.data.SpeciesSourceRepository
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -148,6 +152,28 @@ class BioRepositoryTest {
 
         assertEquals("Asian common toad", entry.commonName)
         assertEquals("Duttaphrynus melanostictus", entry.scientificName)
+    }
+
+    @Test
+    fun observeAllEntriesEmitsFreshEntriesWhenBioRecordsChange() = runBlocking {
+        BioRecordChangeTracker.resetForTests()
+        val rows = mutableListOf(sampleRow(id = "record-before"))
+        val repository = BioRepository(FakeBioRecordGateway(rows))
+        val emissions = mutableListOf<List<String>>()
+
+        val job = launch {
+            repository.observeAllEntries()
+                .take(2)
+                .collect { entries -> emissions += entries.map { it.id } }
+        }
+        while (emissions.isEmpty()) yield()
+
+        rows += sampleRow(id = "record-after", locationLabel = "Fresh Site")
+        BioRecordChangeTracker.markChanged()
+        job.join()
+
+        assertEquals(listOf("record-before"), emissions.first())
+        assertEquals(listOf("record-before", "record-after"), emissions.last())
     }
 
     @Test
@@ -599,6 +625,8 @@ class BioRepositoryTest {
         override fun observeBioRecord(id: String): Flow<BioRecordRow> {
             return observedRows.filter { it.id == id }.asFlow()
         }
+
+        override fun observeBioRecordChanges(): Flow<Unit> = emptyFlow()
 
         override suspend fun currentUserId(): String? = userId
 

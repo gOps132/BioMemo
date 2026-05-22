@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.data.BioStats
 import com.example.biomemo.navigation.MainBottomNav
@@ -25,8 +24,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private lateinit var presenter: DashboardPresenter
@@ -34,8 +33,6 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private val bioRepository = BioRepository()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
     private lateinit var recentAdapter: RecentBioRecordAdapter
-    private var isLoadingBioRecords = false
-    private var observedBioRecordVersion = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,33 +50,18 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             isNestedScrollingEnabled = false
         }
 
-        loadDashboardData()
+        observeDashboardData()
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
-            loadDashboardData()
-        }
-    }
-
-    private fun loadDashboardData() {
-        if (isLoadingBioRecords) return
-        isLoadingBioRecords = true
+    private fun observeDashboardData() {
         bioScope.launch {
-            val (stats, recentEntries) = runCatching {
-                withContext(Dispatchers.IO) {
-                    bioRepository.getStats() to bioRepository.getRecentEntries(3)
-                }
-            }.getOrElse {
-                BioStats(sightings = 0, species = 0, streak = "0d") to emptyList()
+            bioRepository.observeAllEntries().collectLatest { entries ->
+                val stats = entries.toStats()
+                findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
+                findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
+                findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
+                renderRecentBioRecords(entries.take(3))
             }
-            findViewById<TextView>(R.id.textviewStatSightings).text = stats.sightings.toString()
-            findViewById<TextView>(R.id.textviewStatSpecies).text = stats.species.toString()
-            findViewById<TextView>(R.id.textviewStatStreak).text = stats.streak
-            renderRecentBioRecords(recentEntries)
-            observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
-            isLoadingBioRecords = false
         }
     }
 
@@ -93,6 +75,17 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
             return
         }
         recentAdapter.submitItems(entries.map(RecentBioRecordItem::Record))
+    }
+
+    private fun List<BioEntry>.toStats(): BioStats {
+        return BioStats(
+            sightings = size,
+            species = map { it.scientificName }
+                .filter { it != AWAITING_IDENTIFICATION && it != IDENTIFICATION_NOT_AVAILABLE }
+                .distinct()
+                .size,
+            streak = if (isEmpty()) "0d" else "1d"
+        )
     }
 
     private fun recentRecordCard(): LinearLayout {
@@ -260,5 +253,7 @@ class DashboardActivity : AppCompatActivity(), DashboardContract.View {
     private companion object {
         const val VIEW_TYPE_MESSAGE = 1
         const val VIEW_TYPE_RECORD = 2
+        const val AWAITING_IDENTIFICATION = "Awaiting identification"
+        const val IDENTIFICATION_NOT_AVAILABLE = "Not available"
     }
 }

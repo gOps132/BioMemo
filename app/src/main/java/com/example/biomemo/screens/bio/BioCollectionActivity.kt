@@ -21,7 +21,6 @@ import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordChangeTracker
 import com.example.biomemo.data.BioRepository
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
@@ -30,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -46,7 +46,6 @@ class BioCollectionActivity : AppCompatActivity() {
     private lateinit var entriesAdapter: BioEntryAdapter
     private var pullStartY: Float? = null
     private var isRefreshing = false
-    private var observedBioRecordVersion = -1L
     private var navUsername: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,14 +64,7 @@ class BioCollectionActivity : AppCompatActivity() {
         }
         setupPullRefresh()
 
-        loadEntries(forceRefresh = false)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (observedBioRecordVersion != BioRecordChangeTracker.currentVersion()) {
-            loadEntries(forceRefresh = false)
-        }
+        observeEntries()
     }
 
     private fun setupPullRefresh() {
@@ -103,25 +95,39 @@ class BioCollectionActivity : AppCompatActivity() {
     }
 
     private fun loadEntries(forceRefresh: Boolean) {
+        if (!forceRefresh) return
         if (isRefreshing) return
         isRefreshing = true
-        refreshProgress.visibility = if (forceRefresh) View.VISIBLE else View.GONE
+        refreshProgress.visibility = View.VISIBLE
         bioScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    if (forceRefresh) repository.refreshAllEntries() else repository.getAllEntries()
+                    repository.refreshAllEntries()
                 }
             }.onSuccess { refreshedEntries ->
-                entries = refreshedEntries
-                selectedEntryIds.retainAll(entries.map { it.id }.toSet())
-                renderCollection()
-                observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
+                applyEntries(refreshedEntries)
             }.onFailure { error ->
                 Toast.makeText(this@BioCollectionActivity, error.message ?: "Refresh failed", Toast.LENGTH_SHORT).show()
             }
             isRefreshing = false
             refreshProgress.visibility = View.GONE
         }
+    }
+
+    private fun observeEntries() {
+        bioScope.launch {
+            repository.observeAllEntries().collectLatest { refreshedEntries ->
+                applyEntries(refreshedEntries)
+                isRefreshing = false
+                refreshProgress.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun applyEntries(refreshedEntries: List<BioEntry>) {
+        entries = refreshedEntries
+        selectedEntryIds.retainAll(entries.map { it.id }.toSet())
+        renderCollection()
     }
 
     private fun renderCollection() {
@@ -319,7 +325,6 @@ class BioCollectionActivity : AppCompatActivity() {
                 entries = entries.filterNot { it.id in ids }
                 selectedEntryIds.clear()
                 renderCollection()
-                observedBioRecordVersion = BioRecordChangeTracker.currentVersion()
                 Toast.makeText(this@BioCollectionActivity, "Deleted $count BioRecord${if (count == 1) "" else "s"}", Toast.LENGTH_SHORT).show()
             }.onFailure { error ->
                 Toast.makeText(this@BioCollectionActivity, error.message ?: "Delete failed", Toast.LENGTH_SHORT).show()
