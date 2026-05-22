@@ -189,7 +189,7 @@ class BioMapActivity : AppCompatActivity() {
             icon = createPhotoPinDrawable(pin)
             infoWindow = null
             relatedObject = pin.id
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             setOnMarkerClickListener { selectedMarker, _ ->
                 selectedPinId = pin.id
                 mapView.controller.animateTo(selectedMarker.position)
@@ -319,31 +319,30 @@ class BioMapActivity : AppCompatActivity() {
     }
 
     private fun createPhotoPinDrawable(pin: BioMapPin): BitmapDrawable {
-        val imageSize = dp(photoPinImageSizeDp(mapView.zoomLevelDouble))
-        val pinSize = dp(photoPinBaseSizeDp(mapView.zoomLevelDouble))
-        val width = pinSize
-        val height = pinSize
-        val radius = imageSize * 0.18f
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val markerSize = dp(photoMarkerSizeDp(mapView.zoomLevelDouble))
+        val shadowOffset = dp(2).toFloat()
+        val borderWidth = dp(2).toFloat()
+        val cornerRadius = markerSize * 0.18f
+        val bitmap = Bitmap.createBitmap(markerSize, markerSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        ContextCompat.getDrawable(this, R.drawable.ic_bio_map_pin)?.let { pinDrawable ->
-            pinDrawable.bounds = Rect(0, 0, pinSize, pinSize)
-            pinDrawable.draw(canvas)
-        }
 
-        val imageLeft = (pinSize - imageSize) / 2f
-        val imageTop = pinSize * 0.18f
-        val imageBounds = RectF(imageLeft, imageTop, imageLeft + imageSize, imageTop + imageSize)
+        val shadowBounds = RectF(borderWidth, borderWidth + shadowOffset, markerSize - borderWidth, markerSize - borderWidth + shadowOffset)
+        paint.color = Color.argb(70, 18, 34, 28)
+        canvas.drawRoundRect(shadowBounds, cornerRadius, cornerRadius, paint)
 
-        val photoInset = dp(1).toFloat()
+        val borderBounds = RectF(borderWidth, borderWidth, markerSize - borderWidth, markerSize - borderWidth)
+        paint.color = Color.WHITE
+        canvas.drawRoundRect(borderBounds, cornerRadius, cornerRadius, paint)
+
         val photoBounds = RectF(
-            imageBounds.left + photoInset,
-            imageBounds.top + photoInset,
-            imageBounds.right - photoInset,
-            imageBounds.bottom - photoInset
+            borderBounds.left + borderWidth,
+            borderBounds.top + borderWidth,
+            borderBounds.right - borderWidth,
+            borderBounds.bottom - borderWidth
         )
-        val photoPath = Path().apply { addRoundRect(photoBounds, radius * 0.75f, radius * 0.75f, Path.Direction.CW) }
+        val photoRadius = (cornerRadius - borderWidth).coerceAtLeast(0f)
+        val photoPath = Path().apply { addRoundRect(photoBounds, photoRadius, photoRadius, Path.Direction.CW) }
         canvas.save()
         canvas.clipPath(photoPath)
         val markerBitmap = thumbnailBitmaps[pin.photoUrl.trim()]
@@ -353,7 +352,7 @@ class BioMapActivity : AppCompatActivity() {
             paint.color = getColor(R.color.bio_mint_100)
             canvas.drawRect(photoBounds, paint)
             ContextCompat.getDrawable(this, R.drawable.ic_bio_record_photo)?.let { drawable ->
-                val iconInset = (imageSize * 0.30f).toInt()
+                val iconInset = (markerSize * 0.30f).toInt()
                 drawable.setTint(getColor(R.color.bio_forest_700))
                 drawable.bounds = Rect(
                     (photoBounds.left + iconInset).toInt(),
@@ -378,20 +377,12 @@ class BioMapActivity : AppCompatActivity() {
         else -> 0
     }
 
-    private fun photoPinImageSizeDp(zoom: Double): Int = when {
-        zoom >= 16.0 -> 30
-        zoom >= 14.0 -> 26
-        zoom >= 12.0 -> 22
-        zoom >= 10.0 -> 18
-        else -> 14
-    }
-
-    private fun photoPinBaseSizeDp(zoom: Double): Int = when {
-        zoom >= 16.0 -> 54
-        zoom >= 14.0 -> 48
-        zoom >= 12.0 -> 42
-        zoom >= 10.0 -> 38
-        else -> 34
+    private fun photoMarkerSizeDp(zoom: Double): Int = when {
+        zoom >= 16.0 -> 42
+        zoom >= 14.0 -> 38
+        zoom >= 12.0 -> 34
+        zoom >= 10.0 -> 30
+        else -> 26
     }
 
     private fun clusterSizeDp(zoom: Double): Int = when {
