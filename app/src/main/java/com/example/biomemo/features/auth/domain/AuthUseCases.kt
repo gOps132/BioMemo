@@ -51,8 +51,13 @@ data class ProfileUseCases(
     val repository: ProfileRepository = SupabaseProfileRepository()
 ) {
     val loadCurrentProfile = LoadCurrentProfile(repository)
+    val saveUsername = SaveProfileUsername(repository)
 }
 
 class LoadCurrentProfile(private val repository: ProfileRepository) {
     suspend operator fun invoke(): ProfileResult = repository.loadCurrentProfile()
+}
+
+class SaveProfileUsername(private val repository: ProfileRepository) {
+    suspend operator fun invoke(username: String): ProfileResult = repository.saveUsername(username)
 }

@@ -22,7 +22,8 @@ class SplashRouteDeciderTest {
     fun routesToDashboardWhenSessionExists() = runBlocking {
         val decider = SplashRouteDecider(
             restorePersistedSession = {},
-            hasActiveSession = { true }
+            hasActiveSession = { true },
+            needsUsernameSetup = { false }
         )
 
         assertEquals(SplashDestination.DASHBOARD, decider.decideDestination())
@@ -38,20 +39,36 @@ class SplashRouteDeciderTest {
             hasActiveSession = {
                 events.add("check")
                 true
+            },
+            needsUsernameSetup = {
+                events.add("profile")
+                false
             }
         )
 
         val destination = decider.decideDestination()
 
         assertEquals(SplashDestination.DASHBOARD, destination)
-        assertEquals(listOf("restore", "check"), events)
+        assertEquals(listOf("restore", "check", "profile"), events)
+    }
+
+    @Test
+    fun routesToUsernameSetupWhenSessionHasBlankUsername() = runBlocking {
+        val decider = SplashRouteDecider(
+            restorePersistedSession = {},
+            hasActiveSession = { true },
+            needsUsernameSetup = { true }
+        )
+
+        assertEquals(SplashDestination.USERNAME_SETUP, decider.decideDestination())
     }
 
     @Test
     fun routesToLoginWhenSessionRestoreFails() = runBlocking {
         val decider = SplashRouteDecider(
             restorePersistedSession = { error("restore failed") },
-            hasActiveSession = { true }
+            hasActiveSession = { true },
+            needsUsernameSetup = { false }
         )
 
         assertEquals(SplashDestination.LOGIN, decider.decideDestination())
@@ -62,6 +79,7 @@ class SplashRouteDeciderTest {
         val decider = SplashRouteDecider(
             restorePersistedSession = { delay(50) },
             hasActiveSession = { true },
+            needsUsernameSetup = { false },
             restoreTimeoutMs = 1
         )
 
@@ -73,6 +91,7 @@ class SplashRouteDeciderTest {
         val decider = SplashRouteDecider(
             restorePersistedSession = { Thread.sleep(50) },
             hasActiveSession = { true },
+            needsUsernameSetup = { false },
             restoreTimeoutMs = 1
         )
 

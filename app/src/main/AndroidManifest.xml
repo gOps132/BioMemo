@@ -58,6 +58,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".screens.username.UsernameSetupActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".screens.login.LoginActivity"
             android:exported="false" />
 

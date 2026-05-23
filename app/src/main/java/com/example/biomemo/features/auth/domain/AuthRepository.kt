@@ -12,4 +12,5 @@ interface AuthRepository {
 
 interface ProfileRepository {
     suspend fun loadCurrentProfile(): ProfileResult
+    suspend fun saveUsername(username: String): ProfileResult
 }

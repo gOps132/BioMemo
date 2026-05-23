@@ -45,9 +45,11 @@ class AuthUseCasesTest {
         val useCases = ProfileUseCases(FakeProfileRepository(ProfileResult.Success(profile)))
 
         val result = useCases.loadCurrentProfile()
+        val saved = useCases.saveUsername("fern")
 
         assertTrue(result is ProfileResult.Success)
         assertEquals("fern", (result as ProfileResult.Success).profile.username)
+        assertTrue(saved is ProfileResult.Success)
     }
 
     private class FakeAuthRepository : AuthRepository {
@@ -90,5 +92,7 @@ class AuthUseCasesTest {
         private val result: ProfileResult
     ) : ProfileRepository {
         override suspend fun loadCurrentProfile(): ProfileResult = result
+
+        override suspend fun saveUsername(username: String): ProfileResult = result
     }
 }

@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(7);
 
 insert into auth.users (
   id,
@@ -26,6 +26,30 @@ insert into auth.users (
   now()
 );
 
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+) values (
+  '10000000-0000-0000-0000-000000000002',
+  'authenticated',
+  'authenticated',
+  'google@biomemo.app',
+  crypt('password', gen_salt('bf')),
+  now(),
+  '{"provider":"google","providers":["google"]}'::jsonb,
+  '{"name":"Google Explorer"}'::jsonb,
+  now(),
+  now()
+);
+
 select is(public.normalize_username(' Trail Scout! '), 'trailscout', 'normalize_username strips unsafe characters');
 
 select is(
@@ -38,6 +62,12 @@ select is(
   (select username from public.profiles where id = '10000000-0000-0000-0000-000000000001'),
   'trailscout',
   'auth trigger stores normalized profile username'
+);
+
+select is(
+  (select username from public.profiles where id = '10000000-0000-0000-0000-000000000002'),
+  null,
+  'google signup without explicit username requires app username setup'
 );
 
 select is(

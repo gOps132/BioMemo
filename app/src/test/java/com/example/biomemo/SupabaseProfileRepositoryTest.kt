@@ -61,14 +61,57 @@ class SupabaseProfileRepositoryTest {
         assertTrue(result is ProfileResult.Failure)
         assertEquals("Profile not found", (result as ProfileResult.Failure).message)
     }
+
+    @Test
+    fun saveUsernameUpdatesProfileForCurrentUser() = runBlocking {
+        val gateway = FakeProfileGateway(currentUser = AuthUser("auth-user-1", "trail@biomemo.app"))
+        val repository = SupabaseProfileRepository(gateway)
+
+        val result = repository.saveUsername("trailscout")
+
+        assertEquals("trailscout", gateway.updatedUsername)
+        assertTrue(result is ProfileResult.Success)
+        val profile = (result as ProfileResult.Success).profile
+        assertEquals("trailscout", profile.username)
+        assertEquals("trail@biomemo.app", profile.email)
+    }
+
+    @Test
+    fun saveUsernameRejectsInvalidNamesBeforeCallingGateway() = runBlocking {
+        val gateway = FakeProfileGateway(currentUser = AuthUser("auth-user-1", "trail@biomemo.app"))
+        val repository = SupabaseProfileRepository(gateway)
+
+        val result = repository.saveUsername("two words")
+
+        assertTrue(result is ProfileResult.Failure)
+        assertEquals("Use letters, numbers, underscores, or hyphens only.", (result as ProfileResult.Failure).message)
+        assertEquals(null, gateway.updatedUsername)
+    }
+
+    @Test
+    fun saveUsernameMapsDuplicateFailure() = runBlocking {
+        val repository = SupabaseProfileRepository(
+            FakeProfileGateway(
+                currentUser = AuthUser("auth-user-1", "trail@biomemo.app"),
+                updateFailure = IllegalStateException("username_already_taken")
+            )
+        )
+
+        val result = repository.saveUsername("trailscout")
+
+        assertTrue(result is ProfileResult.Failure)
+        assertEquals("Username already taken", (result as ProfileResult.Failure).message)
+    }
 }
 
 private class FakeProfileGateway(
     private val currentUser: AuthUser?,
     private val rowsById: Map<String, SupabaseProfileRow> = emptyMap(),
-    private val failure: Throwable? = null
+    private val failure: Throwable? = null,
+    private val updateFailure: Throwable? = null
 ) : SupabaseProfileGateway {
     val profileLookups = mutableListOf<String>()
+    var updatedUsername: String? = null
 
     override fun currentUser(): AuthUser? = currentUser
 
@@ -76,5 +119,15 @@ private class FakeProfileGateway(
         failure?.let { throw it }
         profileLookups.add(userId)
         return rowsById[userId]
+    }
+
+    override suspend fun updateUsername(username: String): SupabaseProfileRow {
+        updateFailure?.let { throw it }
+        updatedUsername = username
+        return SupabaseProfileRow(
+            id = currentUser?.id.orEmpty(),
+            username = username,
+            avatarUrl = null
+        )
     }
 }
