@@ -1,8 +1,8 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.remote.SupabaseAuthResult
-import com.example.biomemo.data.ExplorerProfile
-import com.example.biomemo.data.remote.ProfileResult
+import com.example.biomemo.features.auth.domain.ExplorerProfile
+import com.example.biomemo.features.auth.domain.ProfileResult
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 import com.example.biomemo.screens.profile.ProfileAuthModel
 import com.example.biomemo.screens.profile.ProfileContract
 import com.example.biomemo.screens.profile.ProfilePresenter

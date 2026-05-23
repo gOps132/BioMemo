@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.splash
 
-import com.example.biomemo.data.remote.SupabaseAuthRepository
+import com.example.biomemo.features.auth.domain.AuthUseCases
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +14,9 @@ enum class SplashDestination {
 
 class SplashRouteDecider(
     private val restorePersistedSession: suspend () -> Unit = {
-        SupabaseAuthRepository().restorePersistedSession()
+        AuthUseCases().restorePersistedSession()
     },
-    private val hasActiveSession: () -> Boolean = { SupabaseAuthRepository().hasActiveSession() },
+    private val hasActiveSession: () -> Boolean = { AuthUseCases().hasActiveSession() },
     private val restoreTimeoutMs: Long = DEFAULT_RESTORE_TIMEOUT_MS
 ) {
     suspend fun decideDestination(): SplashDestination {

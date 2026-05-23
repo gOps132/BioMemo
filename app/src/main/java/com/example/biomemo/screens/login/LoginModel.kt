@@ -1,7 +1,7 @@
 package com.example.biomemo.screens.login
 
-import com.example.biomemo.data.remote.SupabaseAuthRepository
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.domain.AuthUseCases
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 
 interface LoginAuthModel {
     suspend fun authenticate(email: String, password: String): SupabaseAuthResult
@@ -9,13 +9,13 @@ interface LoginAuthModel {
 }
 
 class LoginModel(
-    private val authRepository: SupabaseAuthRepository = SupabaseAuthRepository()
+    private val authUseCases: AuthUseCases = AuthUseCases()
 ) : LoginAuthModel {
     override suspend fun authenticate(email: String, password: String): SupabaseAuthResult {
-        return authRepository.signIn(email, password)
+        return authUseCases.signIn(email, password)
     }
 
     override suspend fun authenticateWithGoogle(): SupabaseAuthResult {
-        return authRepository.signInWithGoogle()
+        return authUseCases.signInWithGoogle()
     }
 }

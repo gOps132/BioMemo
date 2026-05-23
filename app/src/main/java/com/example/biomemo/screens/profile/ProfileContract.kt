@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.profile
 
-import com.example.biomemo.data.ExplorerProfile
+import com.example.biomemo.features.auth.domain.ExplorerProfile
 
 interface ProfileContract {
     interface View {

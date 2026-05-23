@@ -6,7 +6,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
-import com.example.biomemo.data.ExplorerProfile
+import com.example.biomemo.features.auth.domain.ExplorerProfile
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.login.LoginActivity

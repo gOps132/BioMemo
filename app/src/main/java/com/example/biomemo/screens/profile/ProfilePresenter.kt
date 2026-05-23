@@ -1,9 +1,9 @@
 package com.example.biomemo.screens.profile
 
-import com.example.biomemo.data.remote.ProfileResult
-import com.example.biomemo.data.remote.SupabaseAuthRepository
-import com.example.biomemo.data.remote.SupabaseAuthResult
-import com.example.biomemo.data.remote.SupabaseProfileRepository
+import com.example.biomemo.features.auth.domain.AuthUseCases
+import com.example.biomemo.features.auth.domain.ProfileResult
+import com.example.biomemo.features.auth.domain.ProfileUseCases
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 
 interface ProfileAuthModel {
     suspend fun loadProfile(): ProfileResult
@@ -11,12 +11,12 @@ interface ProfileAuthModel {
 }
 
 class ProfileModel(
-    private val authRepository: SupabaseAuthRepository = SupabaseAuthRepository(),
-    private val profileRepository: SupabaseProfileRepository = SupabaseProfileRepository()
+    private val authUseCases: AuthUseCases = AuthUseCases(),
+    private val profileUseCases: ProfileUseCases = ProfileUseCases()
 ) : ProfileAuthModel {
-    override suspend fun loadProfile(): ProfileResult = profileRepository.loadCurrentProfile()
+    override suspend fun loadProfile(): ProfileResult = profileUseCases.loadCurrentProfile()
 
-    override suspend fun signOut(): SupabaseAuthResult = authRepository.signOut()
+    override suspend fun signOut(): SupabaseAuthResult = authUseCases.signOut()
 }
 
 class ProfilePresenter(

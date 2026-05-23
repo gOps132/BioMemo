@@ -14,8 +14,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
 import com.example.biomemo.data.BioEntry
 import com.example.biomemo.data.BioRecordUseCases
-import com.example.biomemo.data.remote.ProfileResult
-import com.example.biomemo.data.remote.SupabaseProfileRepository
+import com.example.biomemo.features.auth.domain.ProfileResult
+import com.example.biomemo.features.auth.domain.ProfileUseCases
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
 import com.example.biomemo.ui.BioImagePreviewDialog
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 
 class BioRecordDetailActivity : AppCompatActivity() {
     private val bioRecordUseCases = BioRecordUseCases()
-    private val profileRepository = SupabaseProfileRepository()
+    private val profileUseCases = ProfileUseCases()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,7 +120,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
     }
 
     private suspend fun currentUsername(): String {
-        return when (val result = profileRepository.loadCurrentProfile()) {
+        return when (val result = profileUseCases.loadCurrentProfile()) {
             is ProfileResult.Success -> result.profile.username?.takeIf { it.isNotBlank() } ?: "Unknown user"
             is ProfileResult.Failure -> "Unknown user"
         }

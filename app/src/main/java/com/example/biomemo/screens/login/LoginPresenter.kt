@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.login
 
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 
 class LoginPresenter(
     private val view: LoginContract.View,
