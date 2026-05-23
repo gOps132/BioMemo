@@ -9,7 +9,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import com.example.biomemo.data.BioRecordPhotoMetadata
+import com.example.biomemo.features.records.domain.BioRecordPhotoMetadata
 import java.io.ByteArrayInputStream
 import java.time.Instant
 import java.time.LocalDateTime

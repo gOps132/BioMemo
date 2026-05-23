@@ -1,5 +1,11 @@
-package com.example.biomemo.data
+package com.example.biomemo.features.records.data
 
+import com.example.biomemo.features.records.domain.BioRecord
+import com.example.biomemo.features.records.domain.BioRecordIdentification
+import com.example.biomemo.features.records.domain.BioRecordRow
+import com.example.biomemo.features.records.domain.BioRecordSpeciesProfile
+import com.example.biomemo.features.records.domain.IdentificationCandidateRow
+import com.example.biomemo.features.records.domain.SpeciesProfileRow
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

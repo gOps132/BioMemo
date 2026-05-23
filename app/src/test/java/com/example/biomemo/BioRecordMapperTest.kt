@@ -1,8 +1,8 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.BioRecordRow
-import com.example.biomemo.data.toBioEntry
-import com.example.biomemo.data.toBioRecord
+import com.example.biomemo.features.records.data.toBioRecord
+import com.example.biomemo.features.records.domain.BioRecordRow
+import com.example.biomemo.features.records.domain.toBioEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

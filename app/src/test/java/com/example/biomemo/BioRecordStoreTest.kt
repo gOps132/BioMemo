@@ -1,8 +1,8 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordChangeSource
-import com.example.biomemo.data.BioRecordStore
+import com.example.biomemo.features.records.data.BioRecordChangeSource
+import com.example.biomemo.features.records.data.BioRecordStore
+import com.example.biomemo.features.records.domain.BioEntry
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map

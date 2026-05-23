@@ -1,6 +1,6 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.BioRecordPhotoMetadata
+import com.example.biomemo.features.records.domain.BioRecordPhotoMetadata
 import com.example.biomemo.screens.capture.BioRecordLocationMetadataMerger
 import com.example.biomemo.screens.capture.BioRecordLocationSnapshot
 import org.junit.Assert.assertEquals

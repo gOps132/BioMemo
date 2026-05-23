@@ -1,7 +1,7 @@
 package com.example.biomemo.screens.bio
 
 import com.example.biomemo.R
-import com.example.biomemo.data.BioEntry
+import com.example.biomemo.features.records.domain.BioEntry
 
 enum class BioCollectionSort(val label: String) {
     NEWEST("Newest"),

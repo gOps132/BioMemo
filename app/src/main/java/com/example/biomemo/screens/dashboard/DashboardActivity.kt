@@ -12,9 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.biomemo.R
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordUseCases
-import com.example.biomemo.data.BioStats
+import com.example.biomemo.features.records.domain.BioEntry
+import com.example.biomemo.features.records.domain.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioStats
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.bio.BioRecordDetailActivity

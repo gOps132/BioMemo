@@ -1,4 +1,4 @@
-package com.example.biomemo.data
+package com.example.biomemo.features.records.domain
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -78,6 +78,8 @@ private fun String.toDisplayDate(): String {
         take(10).ifBlank { "Unknown date" }
     }
 }
+
+private fun String?.presentOrNull(): String? = this?.takeIf { it.isNotBlank() }
 
 internal const val UNIDENTIFIED_COMMON_NAME = "Unidentified organism"
 internal const val AWAITING_IDENTIFICATION = "Awaiting identification"

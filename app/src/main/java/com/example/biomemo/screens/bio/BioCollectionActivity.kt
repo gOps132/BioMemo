@@ -20,8 +20,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.biomemo.R
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioEntry
+import com.example.biomemo.features.records.domain.BioRecordUseCases
 import com.example.biomemo.screens.map.BioMapActivity
 import com.example.biomemo.ui.BioImageLoader
 import com.example.biomemo.ui.roundedImageView

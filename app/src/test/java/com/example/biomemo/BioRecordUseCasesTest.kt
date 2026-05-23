@@ -1,9 +1,9 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordPhotoUpload
-import com.example.biomemo.data.BioRecordRepository
-import com.example.biomemo.data.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioEntry
+import com.example.biomemo.features.records.domain.BioRecordPhotoUpload
+import com.example.biomemo.features.records.domain.BioRecordRepository
+import com.example.biomemo.features.records.domain.BioRecordUseCases
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first

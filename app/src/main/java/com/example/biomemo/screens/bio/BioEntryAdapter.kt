@@ -5,7 +5,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.biomemo.data.BioEntry
+import com.example.biomemo.features.records.domain.BioEntry
 
 class BioEntryAdapter(
     private val createViewHolder: (ViewGroup) -> BioEntryViewHolder,

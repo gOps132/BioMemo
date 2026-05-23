@@ -1,6 +1,6 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.BioEntry
+import com.example.biomemo.features.records.domain.BioEntry
 import com.example.biomemo.screens.bio.BioCollectionSort
 import com.example.biomemo.screens.bio.sortedByMode
 import org.junit.Assert.assertEquals

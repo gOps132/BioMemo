@@ -5,7 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.media.ExifInterface
-import com.example.biomemo.data.BioRecordPhotoMetadata
+import com.example.biomemo.features.records.domain.BioRecordPhotoMetadata
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.math.max

@@ -18,7 +18,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.biomemo.R
-import com.example.biomemo.data.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioRecordUseCases
 import com.example.biomemo.navigation.MainBottomNav
 import com.example.biomemo.navigation.MainNavDestination
 import com.example.biomemo.screens.bio.BioRecordDetailActivity

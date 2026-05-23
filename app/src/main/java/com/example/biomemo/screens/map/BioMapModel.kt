@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.map
 
-import com.example.biomemo.data.BioEntry
+import com.example.biomemo.features.records.domain.BioEntry
 import java.util.Locale
 
 data class BioMapUiState(

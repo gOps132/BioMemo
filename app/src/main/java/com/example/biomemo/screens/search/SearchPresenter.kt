@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.search
 
-import com.example.biomemo.data.BioEntry
+import com.example.biomemo.features.records.domain.BioEntry
 import com.example.biomemo.features.species.domain.SpeciesSearchResult
 
 data class SearchUiState(

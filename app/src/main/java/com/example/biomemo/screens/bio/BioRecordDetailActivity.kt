@@ -12,8 +12,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioEntry
+import com.example.biomemo.features.records.domain.BioRecordUseCases
 import com.example.biomemo.features.auth.domain.ProfileResult
 import com.example.biomemo.features.auth.domain.ProfileUseCases
 import com.example.biomemo.screens.map.BioMapActivity

@@ -8,9 +8,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
-import com.example.biomemo.data.BioRecordPhotoMetadata
-import com.example.biomemo.data.BioRecordPhotoUpload
-import com.example.biomemo.data.BioRecordUseCases
+import com.example.biomemo.features.records.domain.BioRecordPhotoMetadata
+import com.example.biomemo.features.records.domain.BioRecordPhotoUpload
+import com.example.biomemo.features.records.domain.BioRecordUseCases
 import com.example.biomemo.screens.bio.BioRecordDetailActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

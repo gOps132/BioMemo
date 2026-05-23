@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.capture
 
-import com.example.biomemo.data.BioRecordPhotoMetadata
+import com.example.biomemo.features.records.domain.BioRecordPhotoMetadata
 
 data class BioRecordLocationSnapshot(
     val latitude: Double,
