@@ -16,6 +16,7 @@ import com.example.biomemo.features.records.domain.IdentificationCandidateRow
 import com.example.biomemo.features.records.domain.NewBioRecordDraft
 import com.example.biomemo.features.records.domain.NewImageMetadata
 import com.example.biomemo.features.records.domain.SpeciesProfileRow
+import com.example.biomemo.features.species.domain.SpeciesRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -269,7 +270,7 @@ class BioRepositoryTest {
                 )
             )
         )
-        val repository = BioRepository(gateway)
+        val repository = BioRepository(gateway = gateway, speciesRepository = NoopSpeciesRepository)
 
         val entry = repository.retryIdentification("retry-record")
 
@@ -691,6 +692,12 @@ class BioRepositoryTest {
             signedPhotoPath = path
             return signedUrl
         }
+    }
+
+    private object NoopSpeciesRepository : SpeciesRepository {
+        override suspend fun searchSpecies(query: String): List<SpeciesSearchResult> = emptyList()
+
+        override suspend fun previewEnrichment(species: SpeciesSearchResult): SpeciesEnrichmentPreview = SpeciesEnrichmentPreview()
     }
 
     private class FakeSpeciesSourceGateway : SpeciesSourceGateway {

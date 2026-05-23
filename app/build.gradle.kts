@@ -55,23 +55,25 @@ android {
         buildConfig = true
     }
 
-    buildTypes {
-        debug {
+    flavorDimensions += "backend"
+    productFlavors {
+        create("prod") {
+            dimension = "backend"
+            isDefault = true
+            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
+            buildConfigField("boolean", "LOCAL_SUPABASE", "false")
+        }
+        create("local") {
+            dimension = "backend"
             buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_DEV_URL", "SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_DEV_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
             buildConfigField("boolean", "LOCAL_SUPABASE", "${localProperties.containsKey("SUPABASE_DEV_URL") && localProperties.containsKey("SUPABASE_DEV_ANON_KEY")}")
         }
-        create("prodDebug") {
-            initWith(getByName("debug"))
-            matchingFallbacks += listOf("debug")
-            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
-            buildConfigField("boolean", "LOCAL_SUPABASE", "false")
-        }
+    }
+
+    buildTypes {
         release {
-            buildConfigField("String", "SUPABASE_URL", "\"${localPropertyWithFallback("SUPABASE_PROD_URL", "SUPABASE_URL")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localPropertyWithFallback("SUPABASE_PROD_ANON_KEY", "SUPABASE_ANON_KEY")}\"")
-            buildConfigField("boolean", "LOCAL_SUPABASE", "false")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
