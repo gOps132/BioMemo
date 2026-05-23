@@ -1,6 +1,6 @@
 package com.example.biomemo.screens.register
 
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 
 class RegisterPresenter(
     private val view: RegisterContract.View,

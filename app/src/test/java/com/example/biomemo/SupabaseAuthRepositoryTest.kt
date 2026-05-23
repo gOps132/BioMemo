@@ -1,10 +1,10 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.remote.AuthUser
 import com.example.biomemo.config.AppConfig
-import com.example.biomemo.data.remote.SupabaseAuthGateway
-import com.example.biomemo.data.remote.SupabaseAuthRepository
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.data.SupabaseAuthGateway
+import com.example.biomemo.features.auth.data.SupabaseAuthRepository
+import com.example.biomemo.features.auth.domain.AuthUser
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

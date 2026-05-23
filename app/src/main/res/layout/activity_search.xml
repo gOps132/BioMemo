@@ -4,70 +4,65 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_app_surface">
 
-    <ScrollView
+    <LinearLayout
+        android:id="@+id/layoutSearchContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:fillViewport="true"
+        android:orientation="vertical"
+        android:paddingLeft="20dp"
+        android:paddingTop="44dp"
+        android:paddingRight="20dp"
         android:paddingBottom="104dp">
 
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingLeft="20dp"
-            android:paddingTop="44dp"
-            android:paddingRight="20dp"
-            android:paddingBottom="32dp">
+            android:text="Search BioMemo"
+            android:textColor="@color/bio_ink"
+            android:textSize="30sp"
+            android:textStyle="bold" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Search BioMemo"
-                android:textColor="@color/bio_ink"
-                android:textSize="30sp"
-                android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="18dp"
+            android:text="Find private BioRecords or public species references."
+            android:textColor="@color/bio_ink_muted"
+            android:textSize="14sp" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="18dp"
-                android:text="Find private BioRecords or public species references."
-                android:textColor="@color/bio_ink_muted"
-                android:textSize="14sp" />
+        <EditText
+            android:id="@+id/edittextSearch"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:background="@drawable/bg_input_field"
+            android:hint="Try “Philippine eagle” or “Rafflesia”"
+            android:inputType="text"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:textColor="@color/bio_ink"
+            android:textColorHint="#839487"
+            android:textSize="16sp" />
 
-            <EditText
-                android:id="@+id/edittextSearch"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:background="@drawable/bg_input_field"
-                android:hint="Try “Philippine eagle” or “Rafflesia”"
-                android:inputType="text"
-                android:paddingLeft="18dp"
-                android:paddingRight="18dp"
-                android:textColor="@color/bio_ink"
-                android:textColorHint="#839487"
-                android:textSize="16sp" />
+        <TextView
+            android:id="@+id/textviewSearchCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="10dp"
+            android:text="0 results"
+            android:textColor="@color/bio_ink_muted"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/textviewSearchCount"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:layout_marginBottom="10dp"
-                android:text="0 results"
-                android:textColor="@color/bio_ink_muted"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:id="@+id/linearlayoutSearchResults"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </LinearLayout>
-    </ScrollView>
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerviewSearchResults"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="32dp" />
+    </LinearLayout>
 
     <include
         android:layout_width="match_parent"

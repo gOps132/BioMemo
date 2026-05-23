@@ -8,6 +8,7 @@ import com.example.biomemo.R
 import com.example.biomemo.data.remote.SupabaseClientProvider
 import com.example.biomemo.screens.dashboard.DashboardActivity
 import com.example.biomemo.screens.login.LoginActivity
+import com.example.biomemo.screens.username.UsernameSetupActivity
 import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class SplashActivity : AppCompatActivity() {
     private suspend fun navigateNext() {
         val nextActivity = when (routeDecider.decideDestination()) {
             SplashDestination.LOGIN -> LoginActivity::class.java
+            SplashDestination.USERNAME_SETUP -> UsernameSetupActivity::class.java
             SplashDestination.DASHBOARD -> DashboardActivity::class.java
         }
 

@@ -1,7 +1,7 @@
 package com.example.biomemo
 
-import com.example.biomemo.data.remote.AuthUser
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.domain.AuthUser
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 import com.example.biomemo.screens.register.RegisterAuthModel
 import com.example.biomemo.screens.register.RegisterContract
 import com.example.biomemo.screens.register.RegisterPresenter

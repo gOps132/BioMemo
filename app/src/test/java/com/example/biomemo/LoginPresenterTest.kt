@@ -3,8 +3,8 @@ package com.example.biomemo
 import com.example.biomemo.screens.login.LoginContract
 import com.example.biomemo.screens.login.LoginAuthModel
 import com.example.biomemo.screens.login.LoginPresenter
-import com.example.biomemo.data.remote.AuthUser
-import com.example.biomemo.data.remote.SupabaseAuthResult
+import com.example.biomemo.features.auth.domain.AuthUser
+import com.example.biomemo.features.auth.domain.SupabaseAuthResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

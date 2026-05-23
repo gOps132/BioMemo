@@ -9,108 +9,44 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <FrameLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:orientation="vertical"
         android:paddingLeft="18dp"
-        android:paddingTop="42dp"
-        android:paddingRight="18dp">
+        android:paddingTop="42dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_elevated"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingLeft="16dp"
-            android:paddingTop="12dp"
-            android:paddingRight="16dp"
-            android:paddingBottom="12dp">
+        <ImageButton
+            android:id="@+id/imagebuttonBioMapBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_map_floating_button"
+            android:contentDescription="Back"
+            android:elevation="6dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back_24"
+            android:tint="@color/bio_forest_900" />
+    </FrameLayout>
 
-            <TextView
-                android:id="@+id/textviewBioMapBack"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_chip"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="←"
-                android:textColor="@color/bio_forest_700"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="My Bio Map"
-                    android:textColor="@color/bio_ink"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/textviewBioMapSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="BioRecord pins from your captures"
-                    android:textColor="@color/bio_ink_muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-        </LinearLayout>
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/linearlayoutBioMapPreview"
+    <TextView
+        android:id="@+id/textviewBioMapEmpty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginLeft="18dp"
-        android:layout_marginRight="18dp"
-        android:layout_marginBottom="124dp"
+        android:layout_gravity="center"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
         android:background="@drawable/bg_card_elevated"
-        android:orientation="vertical"
+        android:elevation="6dp"
+        android:gravity="center"
+        android:lineSpacingExtra="3dp"
         android:padding="18dp"
-        android:visibility="gone">
+        android:textColor="@color/bio_ink"
+        android:textSize="15sp"
+        android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/textviewBioMapPreviewTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="BioRecord"
-            android:textColor="@color/bio_ink"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/textviewBioMapPreviewSubtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/bio_ink_muted"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/textviewBioMapPreviewMeta"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="@color/bio_forest_600"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-    </LinearLayout>
     <include
+        layout="@layout/include_main_bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="104dp"
-        android:layout_gravity="bottom"
-        layout="@layout/include_main_bottom_nav" />
+        android:layout_gravity="bottom" />
 </FrameLayout>

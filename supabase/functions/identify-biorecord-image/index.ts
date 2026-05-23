@@ -19,13 +19,12 @@ type Candidate = {
   selected?: boolean;
 };
 
-type GeminiGenerateContentResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
+type OpenAIResponsesApiResponse = {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
+      text?: string;
+    }>;
   }>;
 };
 
@@ -91,6 +90,7 @@ Deno.serve(async (request) => {
   const identification = await identifyImage(image);
   if (!identification.ok) {
     console.error("Image identification failed", identification.error);
+    await updateBioRecordStatus(bioRecordId, authHeader, { verification_status: "failed" });
     return jsonResponse({ error: identification.error }, 502);
   }
 
@@ -144,54 +144,66 @@ async function fetchStoredImage(path: string, authHeader: string): Promise<{ byt
 }
 
 async function identifyImage(image: { bytes: Uint8Array; mimeType: string }): Promise<IdentifyImageResult> {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) {
-    return { ok: false, error: "GEMINI_API_KEY is not configured" };
+    return { ok: false, error: "OPENAI_API_KEY is not configured" };
   }
 
   const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    "https://api.openai.com/v1/responses",
     {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
         "User-Agent": "BioMemo/1.0 identify-biorecord-image (Supabase Edge Function)",
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: identificationPrompt() },
+        model: Deno.env.get("OPENAI_IDENTIFICATION_MODEL") ?? "gpt-4.1-mini",
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: identificationPrompt() },
             {
-              inline_data: {
-                mime_type: image.mimeType,
-                data: base64FromBytes(image.bytes),
-              },
+              type: "input_image",
+              image_url: `data:${image.mimeType};base64,${base64FromBytes(image.bytes)}`,
+              detail: "low",
             },
           ],
         }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "biorecord_identification",
+            strict: true,
+            schema: identificationResponseSchema(),
+          },
+        },
+        max_output_tokens: 1200,
       }),
     },
   ).catch((error) => {
-    console.error("Gemini request failed", error);
+    console.error("OpenAI request failed", error);
     return null;
   });
   if (!response) {
-    return { ok: false, error: "Gemini image identification request failed" };
+    return { ok: false, error: "OpenAI image identification request failed" };
   }
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "");
-    console.error("Gemini image identification returned non-OK status", response.status, errorBody);
-    return { ok: false, error: `Gemini image identification failed with HTTP ${response.status}` };
+    console.error("OpenAI image identification returned non-OK status", response.status, errorBody);
+    return { ok: false, error: `OpenAI image identification failed with HTTP ${response.status}` };
   }
 
-  const gemini = (await response.json().catch(() => null)) as GeminiGenerateContentResponse | null;
-  const text = gemini?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const openai = (await response.json().catch(() => null)) as OpenAIResponsesApiResponse | null;
+  const text = openai?.output_text ?? openai?.output?.flatMap((item) => item.content ?? [])
+    .map((content) => content.text)
+    .find((value) => typeof value === "string");
   const candidates = parseCandidateResponse(text);
   if (!candidates) {
-    console.error("Gemini image identification returned an unparsable response", text ?? "");
-    return { ok: false, error: "Gemini image identification response could not be parsed" };
+    console.error("OpenAI image identification returned an unparsable response", text ?? "");
+    return { ok: false, error: "OpenAI image identification response could not be parsed" };
   }
   return { ok: true, candidates: candidates.slice(0, 3) };
 }
@@ -253,7 +265,7 @@ function parseCandidateResponse(text: string | undefined): Candidate[] | null {
       visible_traits: clean(candidate.visible_traits),
       uncertainty_notes: clean(candidate.uncertainty_notes),
     }))
-    .filter((candidate) => Boolean(candidate.scientific_name));
+    .filter(isUsableCandidate);
 }
 
 function safeParseCandidates(jsonText: string): { candidates?: Candidate[] } | null {
@@ -267,12 +279,45 @@ function safeParseCandidates(jsonText: string): { candidates?: Candidate[] } | n
 function identificationPrompt() {
   return [
     "Identify the organism in this field photo for a nature journaling app.",
-    "Return strict JSON only, no markdown.",
-    "Schema: {\"candidates\":[{\"common_name\":\"\",\"scientific_name\":\"\",\"confidence_score\":0,\"reasoning\":\"\",\"visible_traits\":\"\",\"uncertainty_notes\":\"\"}]}",
     "Return up to 3 candidate species. Use scientific binomials when possible.",
     "Confidence score must be 0 to 100. Be conservative when image quality is poor.",
-    "If no organism is visible, return {\"candidates\":[]}.",
+    "If no organism is visible, return an empty candidates array.",
+    "Use empty strings when a field is unknown.",
   ].join("\n");
+}
+
+function identificationResponseSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["candidates"],
+    properties: {
+      candidates: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "common_name",
+            "scientific_name",
+            "confidence_score",
+            "reasoning",
+            "visible_traits",
+            "uncertainty_notes",
+          ],
+          properties: {
+            common_name: { type: "string" },
+            scientific_name: { type: "string" },
+            confidence_score: { type: "number" },
+            reasoning: { type: "string" },
+            visible_traits: { type: "string" },
+            uncertainty_notes: { type: "string" },
+          },
+        },
+      },
+    },
+  };
 }
 
 function supabaseHeaders(authHeader: string) {
@@ -302,6 +347,32 @@ function boundedConfidence(value: unknown): number | null {
   const numberValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numberValue)) return null;
   return Math.max(0, Math.min(100, Math.round(numberValue)));
+}
+
+function isUsableCandidate(candidate: Candidate) {
+  const scientificName = clean(candidate.scientific_name);
+  if (!scientificName) return false;
+
+  const normalizedScientificName = nameKey(scientificName);
+  const normalizedCommonName = nameKey(candidate.common_name);
+  const genericNames = new Set([
+    "awaiting identification",
+    "unidentified organism",
+    "unidentified object",
+    "unknown organism",
+    "unknown object",
+    "not available",
+  ]);
+
+  return normalizedScientificName.split(" ").length >= 2 &&
+    !genericNames.has(normalizedScientificName) &&
+    !genericNames.has(normalizedCommonName);
+}
+
+function nameKey(value: unknown) {
+  return typeof value === "string"
+    ? value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim()
+    : "";
 }
 
 function candidateSort(left: Candidate, right: Candidate) {

@@ -15,7 +15,6 @@ class AppConfigTest {
         )
         assertEquals(!AppConfig.isMissing(AppConfig.googleWebClientId), AppConfig.hasGoogleClientId())
         assertEquals(!AppConfig.isLocalSupabase, AppConfig.canUseGoogleSignIn())
-        assertEquals(!AppConfig.isMissing(AppConfig.aiIdentificationApiKey), AppConfig.hasAiIdentificationApiKey())
     }
 
     @Test

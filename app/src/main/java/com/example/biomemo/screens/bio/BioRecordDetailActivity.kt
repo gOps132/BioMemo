@@ -1,8 +1,9 @@
 package com.example.biomemo.screens.bio
 
-import android.graphics.BitmapFactory
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -11,22 +12,24 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.biomemo.R
-import com.example.biomemo.data.BioEntry
-import com.example.biomemo.data.BioRepository
-import com.example.biomemo.data.remote.ProfileResult
-import com.example.biomemo.data.remote.SupabaseProfileRepository
+import com.example.biomemo.features.records.domain.BioEntry
+import com.example.biomemo.features.records.domain.BioRecordUseCases
+import com.example.biomemo.features.auth.domain.ProfileResult
+import com.example.biomemo.features.auth.domain.ProfileUseCases
+import com.example.biomemo.screens.map.BioMapActivity
+import com.example.biomemo.ui.BioImageLoader
+import com.example.biomemo.ui.BioImagePreviewDialog
+import com.example.biomemo.ui.applyRoundedCorners
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URL
 
 class BioRecordDetailActivity : AppCompatActivity() {
-    private val repository = BioRepository()
-    private val profileRepository = SupabaseProfileRepository()
+    private val bioRecordUseCases = BioRecordUseCases()
+    private val profileUseCases = ProfileUseCases()
     private val bioScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,7 +40,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
         val entryId = intent.getStringExtra(EXTRA_ENTRY_ID).orEmpty()
         bioScope.launch {
-            val entry = repository.getEntryById(entryId)
+            val entry = bioRecordUseCases.getRecordDetail(entryId)
             if (entry == null) {
                 Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()
                 finish()
@@ -48,12 +51,12 @@ class BioRecordDetailActivity : AppCompatActivity() {
             val shouldEnrich = entry.taxonomy == NOT_ENRICHED && entry.scientificName != AWAITING_IDENTIFICATION
             renderEntry(entry, username)
             if (shouldEnrich) {
-                repository.enrichBioRecordSpecies(entry.id)?.let { enrichedEntry ->
+                bioRecordUseCases.enrichSpecies(entry.id)?.let { enrichedEntry ->
                     renderEntry(enrichedEntry, username)
                 }
             }
             bioScope.launch {
-                repository.observeEntryById(entryId).collectLatest { updatedEntry ->
+                bioRecordUseCases.observeRecordDetail(entryId).collectLatest { updatedEntry ->
                     renderEntry(updatedEntry, username)
                 }
             }
@@ -62,13 +65,27 @@ class BioRecordDetailActivity : AppCompatActivity() {
 
     private fun renderEntry(entry: BioEntry, username: String) {
         val heroImage = findViewById<ImageView>(R.id.imageviewBioRecordHero)
+        heroImage.applyRoundedCorners(dp(14).toFloat())
         heroImage.contentDescription = "${entry.commonName} photo"
+        heroImage.isClickable = entry.photoUrl.isNotBlank()
+        heroImage.isFocusable = entry.photoUrl.isNotBlank()
+        heroImage.setOnClickListener {
+            if (entry.photoUrl.isNotBlank()) {
+                BioImagePreviewDialog.show(
+                    activity = this,
+                    photoRef = entry.photoUrl,
+                    signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
+                )
+            }
+        }
         findViewById<TextView>(R.id.textviewBioRecordCommonName).text = entry.commonName
         findViewById<TextView>(R.id.textviewBioRecordScientificName).text = entry.scientificName
         findViewById<TextView>(R.id.textviewBioRecordHeroMeta).text =
             "${entry.category} · ${entry.confidence}% match"
         findViewById<TextView>(R.id.textviewBioRecordNotes).text = entry.notes
         loadHeroPhoto(entry, heroImage)
+        setupShowInMap(entry)
+        setupRetryIdentification(entry, username)
 
         renderRows(
             R.id.linearlayoutObservationDetails,
@@ -96,14 +113,14 @@ class BioRecordDetailActivity : AppCompatActivity() {
                 "Source API" to entry.sourceApi,
                 "Last enriched" to entry.lastEnrichedDate
             ),
-            loadingLabels = ENRICHMENT_LOADING_LABELS
+            verificationStatus = entry.verificationStatus
         )
 
         renderTags(entry.tags.filterNot { it == entry.verificationStatus })
     }
 
     private suspend fun currentUsername(): String {
-        return when (val result = profileRepository.loadCurrentProfile()) {
+        return when (val result = profileUseCases.loadCurrentProfile()) {
             is ProfileResult.Success -> result.profile.username?.takeIf { it.isNotBlank() } ?: "Unknown user"
             is ProfileResult.Failure -> "Unknown user"
         }
@@ -112,16 +129,12 @@ class BioRecordDetailActivity : AppCompatActivity() {
     private fun loadHeroPhoto(entry: BioEntry, imageView: ImageView) {
         if (entry.photoUrl.isBlank()) return
         bioScope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                runCatching {
-                    val url = if (entry.photoUrl.startsWith("http")) {
-                        entry.photoUrl
-                    } else {
-                        repository.createSignedPhotoUrl(entry.photoUrl)
-                    }
-                    URL(url).openStream().use(BitmapFactory::decodeStream)
-                }.getOrNull()
-            }
+            val bitmap = BioImageLoader.loadBitmap(
+                photoRef = entry.photoUrl,
+                targetWidthPx = resources.displayMetrics.widthPixels,
+                targetHeightPx = dp(320),
+                signedUrlResolver = { path -> bioRecordUseCases.createSignedPhotoUrl(path) }
+            )
             if (bitmap != null) {
                 imageView.setPadding(0, 0, 0, 0)
                 imageView.scaleType = ImageView.ScaleType.CENTER_CROP
@@ -130,11 +143,57 @@ class BioRecordDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupShowInMap(entry: BioEntry) {
+        findViewById<TextView>(R.id.textviewBioRecordShowInMap).apply {
+            visibility = if (hasValidCoordinates(entry.latitude, entry.longitude)) View.VISIBLE else View.GONE
+            setOnClickListener {
+                startActivity(
+                    Intent(this@BioRecordDetailActivity, BioMapActivity::class.java)
+                        .putExtra(BioMapActivity.EXTRA_FOCUS_ENTRY_ID, entry.id)
+                )
+            }
+        }
+    }
+
+    private fun setupRetryIdentification(entry: BioEntry, username: String) {
+        findViewById<TextView>(R.id.textviewBioRecordRetryIdentification).apply {
+            isEnabled = true
+            text = "Retry identification"
+            visibility = if (
+                BioRecordDetailState.shouldShowRetryIdentification(
+                    verificationStatus = entry.verificationStatus,
+                    scientificName = entry.scientificName,
+                    commonName = entry.commonName
+                )
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+            setOnClickListener {
+                isEnabled = false
+                text = "Retrying"
+                bioScope.launch {
+                    val retriedEntry = runCatching {
+                        bioRecordUseCases.retryIdentification(entry.id)
+                    }.getOrNull()
+                    if (retriedEntry == null) {
+                        Toast.makeText(this@BioRecordDetailActivity, "BioRecord not found", Toast.LENGTH_SHORT).show()
+                        isEnabled = true
+                        text = "Retry identification"
+                    } else {
+                        renderEntry(retriedEntry, username)
+                    }
+                }
+            }
+        }
+    }
+
     private fun renderRows(
         containerId: Int,
         title: String,
         rows: List<Pair<String, String>>,
-        loadingLabels: Set<String> = emptySet()
+        verificationStatus: String = ""
     ) {
         val container = findViewById<LinearLayout>(containerId)
         container.removeAllViews()
@@ -143,7 +202,7 @@ class BioRecordDetailActivity : AppCompatActivity() {
             container.addView(text(label.uppercase(), 11, R.color.bio_ink_muted, true).apply {
                 setPadding(0, dp(12), 0, 0)
             })
-            if (label in loadingLabels && value.isPendingEnrichment()) {
+            if (BioRecordDetailState.shouldShowEnrichmentLoading(label, value, verificationStatus)) {
                 container.addView(loadingValue())
             } else {
                 container.addView(text(value, 15, R.color.bio_ink, false))
@@ -162,8 +221,6 @@ class BioRecordDetailActivity : AppCompatActivity() {
             contentDescription = "Loading enrichment"
         }
     }
-
-    private fun String.isPendingEnrichment(): Boolean = trim().equals(NOT_ENRICHED, ignoreCase = true)
 
     private fun renderTags(tags: List<String>) {
         val container = findViewById<LinearLayout>(R.id.linearlayoutBioRecordTags)
@@ -190,6 +247,18 @@ class BioRecordDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun hasValidCoordinates(latitude: Double?, longitude: Double?): Boolean {
+        return latitude != null &&
+            longitude != null &&
+            !latitude.isNaN() &&
+            !longitude.isNaN() &&
+            !latitude.isInfinite() &&
+            !longitude.isInfinite() &&
+            latitude in -90.0..90.0 &&
+            longitude in -180.0..180.0 &&
+            !(latitude == 0.0 && longitude == 0.0)
+    }
+
     private fun text(value: String, sizeSp: Int, colorRes: Int, bold: Boolean): TextView {
         return TextView(this).apply {
             text = value
@@ -211,14 +280,5 @@ class BioRecordDetailActivity : AppCompatActivity() {
         const val EXTRA_ENTRY_ID = "bio_record_id"
         private const val NOT_ENRICHED = "Not enriched yet"
         private const val AWAITING_IDENTIFICATION = "Awaiting identification"
-        private val ENRICHMENT_LOADING_LABELS = setOf(
-            "Taxonomy",
-            "Habitat",
-            "Diet",
-            "Lifespan",
-            "Distribution",
-            "Conservation status",
-            "Last enriched"
-        )
     }
 }

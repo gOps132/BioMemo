@@ -1,17 +1,19 @@
 # Copy these into local.properties for local development.
 # Never commit real API keys or secrets.
 
-# Debug builds use these values directly. prodDebug/release builds can use these
-# values too, or the SUPABASE_PROD_* overrides below.
+# Default Android Studio dev variant is prodDebug. These values are the fallback
+# for prodDebug and prodRelease.
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_ANON_KEY=
 
 # Android Studio Build Variants:
-# - debug: SUPABASE_DEV_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
 # - prodDebug: SUPABASE_PROD_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
-# - release: SUPABASE_PROD_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
+# - localDebug: SUPABASE_DEV_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
+# - prodRelease: SUPABASE_PROD_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
+# - localRelease: SUPABASE_DEV_* when present, else SUPABASE_URL/SUPABASE_ANON_KEY
 SUPABASE_PROD_URL=
 SUPABASE_PROD_ANON_KEY=
+SUPABASE_DEV_URL=
+SUPABASE_DEV_ANON_KEY=
 
 GOOGLE_WEB_CLIENT_ID=
-AI_IDENTIFICATION_API_KEY=

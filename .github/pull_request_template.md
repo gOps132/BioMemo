@@ -21,7 +21,7 @@
 
 ## Tests and Verification
 
-- [ ] Android unit tests pass or are not affected: `./gradlew :app:testDebugUnitTest`
+- [ ] Android unit tests pass or are not affected: `./gradlew :app:testProdDebugUnitTest`
 - [ ] Android debug build passes or is not affected: `./gradlew :app:assembleDebug`
 - [ ] Supabase DB tests pass or are not affected: `supabase test db`
 - [ ] New/changed behavior has tests, or the test gap is explained
